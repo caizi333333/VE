@@ -46,6 +46,8 @@ npm start
 
 目前尚未取得独立服务器的连接信息，容器镜像也未在目标 Linux 环境验证；上述步骤是迁移操作说明，不表示迁移或正式上线已经完成。
 
+若希望像“芯智育才”一样**从 GitHub 自动构建并发布**，仓库另备有 `render.yaml`：它定义新加坡区域的单实例 Docker 网站和 1 GB 持久磁盘，保留现有 SQLite、教师登录及 8051 仿真。GitHub Actions 在每次推送后构建 Linux 镜像、执行真实工具链测试并尝试发布到 GitHub Container Registry；工作流通过前不把镜像视为可发布版本。创建 Render 服务需要连接 GitHub 账号并启用付费计算及磁盘；配置的 1 CPU／2 GB 方案按 2026 年 9 月官网价格约为每月 25 美元，磁盘约 0.25 美元／GB／月，实际账单以开通页面为准。`render.yaml` 只是可审查配置，**提交到 GitHub 不会自动开通收费服务**。当前数据库及账号仍在本机，不会随 Git 推送进入云端；新站创建后仍须做受控数据恢复、登录和仿真复验，再切域名。方案依据：[Render Git 仓库部署](https://render.com/docs/web-services)、[持久磁盘](https://render.com/docs/disks)、[价格](https://render.com/pricing)。
+
 迁移现有数据库时，先在旧机执行 `sqlite3 prisma/dev.db ".backup 'tmp/ve-transfer.db'"` 并核对 `sqlite3 tmp/ve-transfer.db 'PRAGMA integrity_check;'` 返回 `ok`。把该文件复制到服务器仓库根目录后，在服务器执行下列命令；执行前应确认当前目录、备份文件及其来源，且在新服务尚未启动时操作：
 
 ```bash

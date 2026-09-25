@@ -1,7 +1,7 @@
-FROM node:22-bookworm-slim
+FROM node:22-trixie-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sdcc-ucsim sqlite3 git make gcc libc6-dev bison flex python3 ca-certificates \
+    sdcc-ucsim sqlite3 git make gcc libc6-dev bison flex python3 gosu ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Keep the 8051 assembler revision identical to the verified local toolchain.
@@ -26,6 +26,5 @@ ENV NODE_ENV=production \
     VE_AS31_PATH=/usr/local/bin/ve-as31 \
     VE_S51_PATH=/usr/bin/s51 \
     SECURE_COOKIES=true
-USER node
 EXPOSE 3100
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "chown -R node:node /data && gosu node npx prisma migrate deploy && exec gosu node npm run start"]

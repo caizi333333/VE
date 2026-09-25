@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: ve-platform
+    runtime: docker
+    repo: https://github.com/caizi333333/VE
+    branch: main
+    region: singapore
+    plan: 1c-2g
+    healthCheckPath: /api/health
+    disk:
+      name: ve-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: "3100"
+      - key: DATABASE_URL
+        value: file:/data/ve.db
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: LLM_PROVIDER
+        value: glm
+      - key: GLM_MODEL
+        value: glm-4.7-flash
+      - key: GLM_API_KEY
+        sync: false
