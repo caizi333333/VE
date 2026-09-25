@@ -1,0 +1,17 @@
+node_modules/
+.next/
+.next-*/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# 密钥与本地库一律不入库
+.env
+.env.local
+*.db
+*.db-journal
+prisma/dev.db*
+
+.DS_Store
+
+tmp/

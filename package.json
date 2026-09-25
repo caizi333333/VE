@@ -1,0 +1,48 @@
+{
+  "name": "virtual-engineer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "微控制器原理及应用技术 · 知识图谱约束下的虚拟工程师诊疗平台",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "lint": "eslint src scripts tests --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "export:kg": "tsx scripts/export-kg.ts",
+    "check:kg": "tsx scripts/check-kg.ts",
+    "demo:constraint": "tsx scripts/demo-constraint.ts",
+    "demo:diagnose": "tsx scripts/demo-diagnose.ts",
+    "demo:review": "tsx scripts/demo-review.ts",
+    "prisma:push": "prisma db push",
+    "check": "npm run typecheck && npm run lint && npm run check:kg && npm test",
+    "test": "tsx --test tests/*.test.ts",
+    "db:migrate": "tsx scripts/upgrade.ts",
+    "teacher:create": "tsx scripts/create-teacher.ts",
+    "test:integration": "tsx scripts/integration.ts",
+    "demo:classroom": "tsx scripts/seed-classroom.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0",
+    "next": "^15.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.5.4",
+    "postcss": "^8.4.49",
+    "prisma": "^6.1.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.13",
+    "typescript": "^5.7.2"
+  }
+}

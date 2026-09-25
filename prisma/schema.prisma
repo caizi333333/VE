@@ -1,0 +1,280 @@
+// 诊疗平台数据模型。
+//
+// 合规前提（申报书原话）：学生代码与提问去除学号、姓名等个人信息后存校内私有空间；
+// 所有 AI 生成内容经教师复核后才用于教学。因此：
+//   - 本库不设学生身份表，不存学号姓名，只存脱敏后的文本；
+//   - 诊疗结果默认 pending_review，教师确认后才能标记为已下发。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// 一次诊疗：从学生贴代码到模型给出四段式结果。
+model Diagnosis {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// 给学生看的短单号，用来取回教师下发结果。不是学号，不对应身份。
+  ticket String @unique
+  /// 课堂工位号，如 A3。可选，便于老师对台，禁止填学号姓名。
+  benchLabel String @default("")
+
+  /// 脱敏后的现象描述。入库前已过脱敏，原文不落库。
+  symptomText String
+  /// 脱敏后的代码片段。
+  codeText    String
+  /// 脱敏命中记录（JSON），用于证明脱敏确实执行过，也供周日志统计。
+  redactionLog String
+
+  /// 命中的故障链 id；未命中时为空，走通用图谱检索。
+  faultChainId  String?
+  /// 本次实际注入提示词的依赖链节点（JSON 数组，有序）。
+  chainPointIds String
+
+  /// 模型提供方与模型名，留痕以便对比不同国产模型的表现。
+  provider String
+  model    String
+
+  /// 四段式输出。checkpoints / reviewNotes 为 JSON 数组。
+  classification String
+  checkpoints    String
+  bridgingTask   String
+  reviewNotes    String
+  /// 模型原始返回，便于复核时追溯。
+  rawResponse    String
+
+  /// pending_review 待复核 | released 已复核下发 | rejected 复核未通过
+  status String @default("pending_review")
+
+  /// 学生勾过的检查点下标（JSON 数字数组）。
+  studentTicks String @default("[]")
+  /// 空 | checking | resolved | stuck
+  studentOutcome String @default("")
+  /// 学生认为自己卡在/定位到的节点。
+  studentResolvedPoint String @default("")
+  /// 当前解开到第几级任务：1 基础补链，2 综合，3 拓展。
+  activeTaskLevel Int @default(1)
+
+  // Legacy records are quarantined from classroom analytics until classified.
+  classroomId String?
+  learnerId String?
+  experimentId String?
+  dataSource String @default("legacy_unknown")
+  version Int @default(0)
+  round Int @default(1)
+  publishedVersion Int?
+  promptVersion String @default("legacy")
+  graphVersion String @default("legacy")
+  configSnapshot String @default("{}")
+  rubricSnapshot String @default("[]")
+  constraintSnapshot String @default("{}")
+  assessmentJson String @default("[]")
+  taskPackJson String @default("[]")
+  roundsJson String @default("[]")
+  completedAt DateTime?
+  review Review?
+  revisions ReviewRevision[]
+  attempts TaskAttempt[]
+
+  @@index([classroomId, status, createdAt])
+  @@index([learnerId, experimentId])
+
+  @@index([createdAt])
+  @@index([faultChainId])
+}
+
+/// 教师复核记录。AI 辅助不替代教师，下发与否以本表为准。
+model Review {
+  id          String   @id @default(cuid())
+  diagnosisId String   @unique
+  reviewedAt  DateTime @default(now())
+  /// 复核教师署名，课堂演示阶段填姓名即可，不关联学生数据。
+  reviewer    String
+
+  /// 教师修改后的检查点（JSON 数组）与补链任务。
+  checkpoints  String
+  bridgingTask String
+  /// 教师补充说明，例如确认初值计算、补技术要点。
+  comment      String
+
+  /// true = 确认下发给学生；false = 复核未通过，不下发。
+  released Boolean
+
+  diagnosis Diagnosis @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+}
+
+/// 教师复核时回填的高频易错点，回填后参与后续检索。
+model Pitfall {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// 落到哪个知识图谱节点。
+  pointId     String
+  description String
+  /// 来自哪次诊疗，便于追溯这条易错点的实际出处。
+  diagnosisId String?
+  /// 回填人。
+  author      String
+
+  /// 教师可停用某条回填，不物理删除，保留痕迹。
+  active Boolean @default(true)
+  classroomId String?
+  dedupeKey String? @unique
+
+  @@index([pointId])
+  @@index([active])
+}
+
+
+model Teacher {
+  id String @id @default(cuid())
+  username String @unique
+  displayName String
+  passwordHash String
+  createdAt DateTime @default(now())
+  sessions Session[]
+  classrooms Classroom[]
+  materials CourseMaterial[]
+}
+
+model Session {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  teacherId String?
+  learnerId String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  learner Learner? @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+}
+
+model Classroom {
+  id String @id @default(cuid())
+  teacherId String
+  name String
+  joinCode String @unique
+  joinOpen Boolean @default(true)
+  dataSource String @default("classroom")
+  reviewReference String @default("")
+  participationConfirmed Boolean @default(false)
+  createdAt DateTime @default(now())
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  learners Learner[]
+  experiments Experiment[]
+  materials CourseMaterial[]
+}
+
+/// 教师按班级和实验维护的原始教学资料；文件与元数据保存在同一数据库，随备份恢复。
+model CourseMaterial {
+  id String @id @default(cuid())
+  classroomId String
+  teacherId String
+  labId Int
+  kind String
+  title String
+  originalName String
+  mimeType String
+  content Bytes
+  byteSize Int
+  sha256 String
+  published Boolean @default(false)
+  active Boolean @default(true)
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  classroom Classroom @relation(fields: [classroomId], references: [id])
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  @@index([classroomId, labId, active, published])
+}
+
+model Learner {
+  id String @id @default(cuid())
+  classroomId String
+  number String
+  recoveryHash String
+  active Boolean @default(true)
+  participatedAt DateTime?
+  createdAt DateTime @default(now())
+  classroom Classroom @relation(fields: [classroomId], references: [id])
+  sessions Session[]
+  @@unique([classroomId, number])
+}
+
+model Experiment {
+  id String @id @default(cuid())
+  classroomId String
+  name String
+  faultChainId String
+  configJson String @default("{}")
+  rubricJson String @default("[]")
+  confirmed Boolean @default(false)
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  classroom Classroom @relation(fields: [classroomId], references: [id])
+  @@index([classroomId])
+}
+
+model ReviewRevision {
+  id String @id @default(cuid())
+  diagnosisId String
+  teacherId String?
+  version Int
+  round Int @default(1)
+  action String
+  payloadJson String
+  createdAt DateTime @default(now())
+  diagnosis Diagnosis @relation(fields: [diagnosisId], references: [id])
+  @@unique([diagnosisId, version])
+}
+
+model TaskAttempt {
+  id String @id @default(cuid())
+  diagnosisId String
+  learnerId String
+  publishedVersion Int
+  level Int
+  ticksJson String @default("[]")
+  observation String
+  codeText String @default("")
+  outcome String
+  status String @default("submitted")
+  teacherFeedback String @default("")
+  verificationEvidence String @default("")
+  verifiedAt DateTime?
+  verifiedBy String?
+  idempotencyKey String @unique
+  createdAt DateTime @default(now())
+  diagnosis Diagnosis @relation(fields: [diagnosisId], references: [id])
+  @@index([diagnosisId, createdAt])
+}
+
+model ActivityEvent {
+  id String @id @default(cuid())
+  classroomId String?
+  learnerId String?
+  diagnosisId String?
+  kind String
+  dataSource String
+  payloadJson String @default("{}")
+  createdAt DateTime @default(now())
+  @@index([classroomId, kind, createdAt])
+}
+
+model GenerationRequest {
+  key String @id
+  learnerId String
+  inputHash String
+  status String @default("processing")
+  diagnosisId String?
+  errorCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([learnerId, createdAt])
+}
