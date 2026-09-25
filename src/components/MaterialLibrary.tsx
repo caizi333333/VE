@@ -59,7 +59,7 @@ export default function MaterialLibrary({ classroomId, labId, teacher = false }:
     {teacher && <form className="material-upload" onSubmit={upload}>
       <label>资料名称<input value={title} onChange={e => setTitle(e.target.value)} required minLength={2} maxLength={100} placeholder="如：本次实验板接线图" /></label>
       <label>资料类别<select value={kind} onChange={e => setKind(e.target.value)}>{Object.entries(kindLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-      <label>选择文件<input id="material-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.pptx" onChange={e => setFile(e.target.files?.[0] ?? null)} required /></label>
+      <label>选择文件<input id="material-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.pptx,.asm,.a51,.hex" onChange={e => setFile(e.target.files?.[0] ?? null)} required /></label>
       <button className="btn primary" disabled={busy || !file}>{busy ? "保存中…" : "上传并保存"}</button>
       <p className="inline-help">单件不超过 8 MB。先保存为未发布，核对板卡型号和内容后再开放。</p>
     </form>}

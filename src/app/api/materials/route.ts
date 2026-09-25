@@ -13,6 +13,9 @@ const formats: Record<string, { mime: string; signature: (bytes: Buffer) => bool
   webp: { mime: 'image/webp', signature: b => b.subarray(0, 4).toString() === 'RIFF' && b.subarray(8, 12).toString() === 'WEBP', inline: true },
   docx: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', signature: b => b.subarray(0, 2).toString() === 'PK' && b.includes(Buffer.from('word/document.xml')), inline: false },
   pptx: { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', signature: b => b.subarray(0, 2).toString() === 'PK' && b.includes(Buffer.from('ppt/presentation.xml')), inline: false },
+  asm: { mime: 'text/plain; charset=utf-8', signature: b => !b.includes(0) && b.length <= 256 * 1024, inline: false },
+  a51: { mime: 'text/plain; charset=utf-8', signature: b => !b.includes(0) && b.length <= 256 * 1024, inline: false },
+  hex: { mime: 'text/plain; charset=utf-8', signature: b => b.length <= 256 * 1024 && b.toString('ascii').split(/\r?\n/).filter(Boolean).every(line => /^:[0-9A-Fa-f]+$/.test(line)), inline: false },
 };
 const kinds = ['guide', 'diagram', 'manual', 'report', 'other'] as const;
 const labId = (value: string | null) => {

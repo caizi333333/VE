@@ -1711,3 +1711,39 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 @media (max-width: 900px) { .cw-index::before { flex: none; align-self: center; padding: 0 12px; } }
 @media (max-width: 767px) { .cw-scope-head { display: block; } .cw-scope-badge { display: inline-block; margin-top: 12px; } .cw-scope-metrics { grid-template-columns: 1fr; } .cw-scope-metrics > div { padding: 12px 14px; } .cw-scope-chart { overflow-x: auto; } .cw-scope-chart svg { min-width: 550px; } .cw-scope-transport { align-items: stretch; flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { .cw-scope * { scroll-behavior: auto !important; } }
+
+.assembly-debugger { margin: 20px 24px; border: 1px solid #c7d8cb; background: #f7faf7; border-radius: 16px; overflow: hidden; }
+.assembly-debugger > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; cursor: pointer; list-style: none; padding: 17px 20px; min-height: 58px; color: #1b4631; }
+.assembly-debugger > summary::-webkit-details-marker { display: none; }
+.assembly-debugger > summary span { font-size: 13px; color: #6a785e; font-weight: 750; }
+.assembly-debugger > summary strong { font-size: 16px; }
+.assembly-debugger > summary em { margin-left: auto; font-size: 13px; font-style: normal; color: #2b6850; }
+.assembly-body { border-top: 1px solid #d9e4da; padding: 20px; color: #283f32; }
+.assembly-body > p { margin: 0 0 8px; line-height: 1.6; }
+.assembly-source, .assembly-boundary { color: #54695b; font-size: 14px; }
+.assembly-layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 18px; margin: 18px 0; }
+.assembly-editor, .assembly-panel { min-width: 0; }
+.assembly-editor label { display: block; margin-bottom: 7px; font-weight: 700; }
+.assembly-editor textarea { width: 100%; resize: vertical; min-height: 260px; padding: 13px; border: 1px solid #aec5b3; border-radius: 10px; background: #14241b; color: #edf6e9; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; tab-size: 4; }
+.assembly-editor small { display: block; margin-top: 6px; color: #53695b; font-size: 13px; }
+.assembly-panel { border: 1px solid #dce6dd; background: white; border-radius: 12px; padding: 15px; }
+.assembly-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.assembly-actions .btn { min-height: 42px; }
+.assembly-counter { font-size: 14px; font-weight: 700; margin: 17px 0 12px; }
+.assembly-registers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.assembly-registers > div { border: 1px solid #e2eae2; border-radius: 8px; padding: 7px 9px; display: flex; justify-content: space-between; gap: 6px; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.assembly-registers span { color: #55695a; }
+.assembly-registers strong { color: #153f2b; }
+.assembly-ram { font-size: 13px; line-height: 1.55; }
+.assembly-leds { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 5px; }
+.assembly-leds > div { min-width: 0; text-align: center; border: 1px solid #d4dfd5; border-radius: 8px; padding: 8px 2px; background: #eef1ed; font-size: 11px; }
+.assembly-leds > div.lit { background: #f5d987; border-color: #b88d2c; color: #392b0b; }
+.assembly-leds span, .assembly-leds b { display: block; }
+.assembly-events { margin-top: 16px; font-size: 13px; }
+.assembly-events ol { max-height: 115px; overflow-y: auto; padding-left: 22px; margin: 5px 0; }
+.assembly-empty { padding: 18px; color: #526457; font-size: 14px; }
+@media(max-width: 850px) { .assembly-layout { grid-template-columns: 1fr; } }
+@media(max-width: 600px) { .assembly-debugger { margin: 16px 18px; } .assembly-body { padding: 16px; } .assembly-debugger > summary em { margin-left: 0; width: 100%; } .assembly-registers { grid-template-columns: repeat(2,1fr); } }
+.board-reference { margin: 18px 0 0; max-width: 720px; }
+.board-reference img { display: block; width: 100%; height: auto; border: 1px solid #d8e3da; border-radius: 10px; }
+.board-reference figcaption { color: #506958; font-size: 14px; margin-top: 8px; line-height: 1.55; }

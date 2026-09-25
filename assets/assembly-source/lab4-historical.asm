@@ -1,0 +1,37 @@
+; 历史备课候选源文件；不是已核实的本班最终实验程序。
+; 源路径：2025实验-丸子/S4/SHIYAN41.ASM
+; 仅统一编码和换行；未修订指令或核验实物效果。
+ORG 0000H
+LJMP MAIN
+
+ORG 0013H
+LJMP INT01
+
+ORG 0040H
+
+MAIN:
+	SETB IT1
+    SETB EX1
+    SETB EA
+    SETB PX1
+    SJMP $
+
+
+
+INT01:
+    LCALL DELAY
+	JB P3.3,TT
+	CPL P1.0
+TT:RETI
+
+
+DELAY:
+	MOV R6,#0FFH
+DELAY1:
+	MOV R7,#0FFH
+DELAY2:
+	DJNZ R7,DELAY2
+	DJNZ R6,DELAY1
+	RET
+
+END

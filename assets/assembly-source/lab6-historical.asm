@@ -1,0 +1,28 @@
+; 历史备课候选源文件；不是已核实的本班最终实验程序。
+; 源路径：2025实验-丸子/s6/S62.asm
+; 仅统一编码和换行；未修订指令或核验实物效果。
+ORG 0000H
+LJMP MAIN
+ORG 0040H
+MAIN: MOV	R0,#0FAH
+DLV1: CPL	P2.0
+	  LCALL	DELAY
+	  DJNZ	R0,DLV1
+
+      MOV	R0,#0FAH
+DLV2:
+	  CPL	P2.0
+	  LCALL	DELAY
+	  LCALL	DELAY
+	  DJNZ	R0,DLV2
+	  AJMP 	MAIN
+
+DELAY:
+	MOV R5,#32
+DELAY1:
+	MOV R6,#7
+DELAY2:
+	DJNZ R6,DELAY2
+	DJNZ R5,DELAY1
+	RET
+END

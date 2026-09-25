@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import LoopRail, { type LoopStep } from "@/components/LoopRail";
 import TicketBoard from "@/components/TicketBoard";
 import LabVisual from "@/components/LabVisual";
@@ -9,6 +10,7 @@ import { api, errorText } from "@/components/client-api";
 import { redactSubmission } from "@/lib/redact";
 import { REDACTION_RULE_LABELS } from "@/lib/api-types";
 import { LAB_GUIDES, LAB_PPT_NOTES, LAB_REPORT_TITLES, labGuide } from "@/lib/lab-guides";
+import AssemblyDebugger from "@/components/AssemblyDebugger";
 import { coursewareForLab } from "@/lib/courseware";
 import type {
   SessionView,
@@ -396,8 +398,9 @@ export default function StudentPage() {
             <section><span>04 / 观察与验证</span><h3>用实际结果核对</h3><ul>{guide.resultChecks.map(v => <li key={v}>{v}</li>)}</ul><p><strong>记录：</strong>{guide.observations.join("；")}</p></section>
           </div>
           <div className="lab-after-steps"><div><strong>遇到问题？</strong><p>先按上面的顺序检查，再写下实际现象；教师复核后给出针对本实验的指导。</p></div><a className="btn primary" href="#ask-teacher">向教师求助</a></div>
-          <details className="lab-guide-more"><summary>查看本实验应保留的材料</summary><div><p><strong>资料准备：</strong>{guide.evidence}</p><a href={`/api/lab-help?lab=${guide.id}`} className="btn quiet">下载本实验核对单</a></div></details>
+          <details className="lab-guide-more"><summary>查看本实验应保留的材料与板卡参考照片</summary><div><p><strong>资料准备：</strong>{guide.evidence}</p><a href={`/api/lab-help?lab=${guide.id}`} className="btn quiet">下载本实验核对单</a><figure className="board-reference"><a href="/prechin6-board-reference.jpg" target="_blank" rel="noopener noreferrer"><Image src="/prechin6-board-reference.jpg" alt="普中-6 V1.2 手册中的开发板各功能模块照片" width={1227} height={894} /></a><figcaption>厂家手册第 3.1 节开发板功能示意照片；仅供辨认模块，不代表本班实际板型、接线或实验结果。</figcaption></figure></div></details>
           {coursewareForLab(guide.id).length > 0 && <div className="lab-courseware"><div><span className="eyebrow">可选 / 配套原理课件</span><h3>需要理解原理时再打开</h3></div><div>{coursewareForLab(guide.id).map(item => <Link key={item.slug} href={`/courseware/${item.slug}`}>{item.title}<span aria-hidden="true">↗</span></Link>)}</div></div>}
+          <AssemblyDebugger labId={guide.id} />
           <MaterialLibrary classroomId={session.learner.classroom_id} labId={guide.id} />
           <div className="lab-sequence-footer"><span>实验顺序 {guide.id} / 8 · 切换只用于查看，不表示实验完成</span><div>{guide.id > 1 && <button type="button" className="btn quiet" onClick={() => selectLab(guide.id - 1)}>← 上一个实验</button>}{guide.id < 8 && <button type="button" className="btn" onClick={() => selectLab(guide.id + 1)}>查看下一个实验 →</button>}</div></div>
         </article>}

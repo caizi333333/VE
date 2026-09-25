@@ -1,0 +1,41 @@
+; 历史备课候选源文件；不是已核实的本班最终实验程序。
+; 源路径：2025实验-丸子/s5LED数码管动静态显示实验/xm1.asm
+; 仅统一编码和换行；未修订指令或核验实物效果。
+ORG 0000H
+LJMP MAIN
+ORG 000BH
+LJMP DVT0
+ORG 0040H
+MAIN:
+	MOV TMOD,#01H
+	MOV TH0,#0B1H
+    MOV TL0,#0E0H
+    MOV R0,#5
+	MOV R1,#8;XUNHAN
+	MOV	R2,#0
+	MOV	DPTR,#TAB
+    SETB ET0
+    SETB EA
+    SETB TR0
+	MOV	P0,#0FEH
+    SJMP $
+DVT0:
+;-1
+DJNZ R0,NT0
+MOV  R0,#5
+INC	R2
+MOV	A,R2
+MOVC A,@A+DPTR
+MOV	P0,A
+DJNZ R1,NT0
+MOV R1,#8
+MOV R2,#0
+MOV	P0,#0FEH
+
+NT0:
+	MOV  TH0,#0B1H
+    MOV  TL0,#0E0H
+    ;SETB TR0
+    RETI
+TAB:DB 0xFE,0xFD,0xFB,0xF7,0xEF,0xDF,0xBF,0x7F
+END
