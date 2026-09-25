@@ -18,7 +18,7 @@ jobs:
         run: docker build -t ve-checked:${{ github.sha }} .
       - name: Verify Linux binaries and application
         run: |
-          docker run --rm ve-checked:${{ github.sha }} sh -c 'command -v ve-as31 && command -v s51'
+          docker run --rm ve-checked:${{ github.sha }} sh -c 'command -v ve-as31 && command -v ucsim_51'
           docker run --rm --user root -e VE_NATIVE_8051_TEST=1 ve-checked:${{ github.sha }} npm run check
           docker run --rm --user root ve-checked:${{ github.sha }} npm run test:integration
       - name: Publish verified image

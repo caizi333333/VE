@@ -24,7 +24,7 @@ RUN npm run build
 RUN mkdir -p /data && chown node:node /data
 ENV NODE_ENV=production \
     VE_AS31_PATH=/usr/local/bin/ve-as31 \
-    VE_S51_PATH=/usr/bin/s51 \
+    VE_S51_PATH=/usr/bin/ucsim_51 \
     SECURE_COOKIES=true
 EXPOSE 3100
 CMD ["sh", "-c", "chown -R node:node /data && gosu node npx prisma migrate deploy && exec gosu node npm run start"]
