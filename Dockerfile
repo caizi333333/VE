@@ -1,7 +1,7 @@
 FROM node:22-bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sdcc-ucsim sqlite3 git make gcc bison flex python3 ca-certificates \
+    sdcc-ucsim sqlite3 git make gcc libc6-dev bison flex python3 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Keep the 8051 assembler revision identical to the verified local toolchain.
