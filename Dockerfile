@@ -13,16 +13,16 @@ RUN git clone --quiet https://github.com/ve3wwg/as31.git /tmp/as31 \
     && rm -rf /tmp/as31
 
 WORKDIR /app
+ENV DATABASE_URL=file:/data/ve.db \
+    NEXT_TELEMETRY_DISABLED=1
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci && npx prisma generate
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 RUN mkdir -p /data && chown node:node /data
 ENV NODE_ENV=production \
-    DATABASE_URL=file:/data/ve.db \
     VE_AS31_PATH=/usr/local/bin/ve-as31 \
     VE_S51_PATH=/usr/bin/s51 \
     SECURE_COOKIES=true
