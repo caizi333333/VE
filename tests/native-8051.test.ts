@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ASSEMBLY_LABS, normalizeAssembly } from '../src/lib/assembly-labs';
-import { compileAndSimulate, parseIntelHex, parseS51 } from '../src/lib/native-8051';
+import { compileAndSimulate, MAX_CONCURRENT_NATIVE_RUNS, NativeCapacityError, parseIntelHex, parseS51, withNativeSlot } from '../src/lib/native-8051';
 import { LAB2_GROUP_LED_ASM, LAB3_ORIGINAL_TIMER_ASM, LAB5_SCAN_ASM, LAB5_SCAN_CORRECTED_ASM, LAB6_TWO_TONE_ASM, LAB7_CLOCK_ALARM_ASM, LAB7_CLOCK_ASM, LAB8_ABSTRACT_STEPPER_ASM, LAB8_PWM_70_ASM } from '../src/lib/assembly-presets';
 
 const available = process.env.VE_NATIVE_8051_TEST === '1';
@@ -22,6 +22,17 @@ test('Intel HEX checksum rejects corrupted machine code', () => {
 
 test('ucSim parser rejects incomplete snapshots', () => {
   assert.throws(() => parseS51(''), /状态解析失败/);
+});
+
+test('native admission protects the server and releases slots after failures', async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const running = Array.from({ length: MAX_CONCURRENT_NATIVE_RUNS }, () => withNativeSlot(() => gate));
+  await assert.rejects(withNativeSlot(async () => undefined), NativeCapacityError);
+  release();
+  await Promise.all(running);
+  await assert.rejects(withNativeSlot(async () => { throw new Error('tool failed'); }), /tool failed/);
+  await withNativeSlot(async () => undefined);
 });
 
 test('AS31 compiles all eight extracts and ucSim runs their machine code', { skip: !available }, async () => {

@@ -8,6 +8,7 @@ next-env.d.ts
 # 密钥与本地库一律不入库
 .env
 .env.local
+server.env
 *.db
 *.db-journal
 prisma/dev.db*

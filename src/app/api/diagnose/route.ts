@@ -112,13 +112,15 @@ export const POST = withErrors(async (request: Request) => {
   let generated: DiagnosisOutput | null = null;
   let chat: ChatResult | null = null;
   const messages = buildMessages(constraint,redacted.symptom,redacted.code,diagnosisContext);
+  let retryInstruction = '';
   for(let attempt=0;attempt<2 && Date.now()<deadlineAt;attempt++) {
     try {
-      chat = await chatComplete(attempt ? [...messages,{role:'user',content:'请重新按所需 JSON 结构输出，仅使用给定知识编号；数值只引用程序提供的计算。'}] : messages,{deadlineAt});
+      chat = await chatComplete(attempt ? [...messages,{role:'user',content:retryInstruction}] : messages,{deadlineAt});
       generated = parseDiagnosis(chat.content,pointIds,diagnosisContext);
       break;
-    } catch {
+    } catch(error) {
       if (!chat) break; // Network/config failures become a manual task instead of triggering duplicate calls.
+      retryInstruction = `上一版未通过校验：${error instanceof Error ? error.message.slice(0,160) : '结构错误'}。仅返回 JSON；checkpoints 为 1—3 条且 point_id 只能选 ${pointIds.join('、')}；${rubric.length ? `assessments 只能使用教师量规编号 ${rubric.map(item=>item.id).join('、')}` : '没有确认量规，assessments 必须为 []'}；不自行计算数值。`;
     }
   }
   const output = generated && chat ? {

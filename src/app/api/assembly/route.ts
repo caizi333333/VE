@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { assertSameOrigin, getLearner, getTeacher, HttpError, rateLimit, withErrors } from '@/lib/auth';
-import { compileAndSimulate, MAX_NATIVE_STEPS } from '@/lib/native-8051';
+import { compileAndSimulate, MAX_NATIVE_STEPS, NativeCapacityError, withNativeSlot } from '@/lib/native-8051';
 import { assemblyLab } from '@/lib/assembly-labs';
 
 export const runtime = 'nodejs';
@@ -29,9 +29,10 @@ export const POST = withErrors(async (request: Request) => {
   if (parsed.data.secondary_port && (!parsed.data.trace_port || parsed.data.secondary_port === parsed.data.trace_port)) throw new HttpError(400, '双端口采样参数无效');
   if (parsed.data.tertiary_port && (!parsed.data.secondary_port || parsed.data.tertiary_port === parsed.data.trace_port || parsed.data.tertiary_port === parsed.data.secondary_port)) throw new HttpError(400, '三端口采样参数无效');
   try {
-    const result = await compileAndSimulate(parsed.data.code, parsed.data.steps, parsed.data.key_steps, parsed.data.clock_hz, parsed.data.trace_port ?? assemblyLab(parsed.data.lab_id)?.port, parsed.data.secondary_port, parsed.data.tertiary_port, parsed.data.trace_window);
+    const result = await withNativeSlot(() => compileAndSimulate(parsed.data.code, parsed.data.steps, parsed.data.key_steps, parsed.data.clock_hz, parsed.data.trace_port ?? assemblyLab(parsed.data.lab_id)?.port, parsed.data.secondary_port, parsed.data.tertiary_port, parsed.data.trace_window));
     return NextResponse.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (cause) {
+    if (cause instanceof NativeCapacityError) throw new HttpError(429, cause.message);
     const error = cause as NodeJS.ErrnoException;
     if (error.code === 'ENOENT') throw new HttpError(503, '服务器尚未安装 8051 汇编或仿真工具');
     throw new HttpError(422, error.message || '8051 汇编或仿真失败');

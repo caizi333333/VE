@@ -1,0 +1,16 @@
+services:
+  ve:
+    build: .
+    restart: unless-stopped
+    init: true
+    env_file: server.env
+    environment:
+      DATABASE_URL: file:/data/ve.db
+      SECURE_COOKIES: "true"
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ve_data:/data
+
+volumes:
+  ve_data:

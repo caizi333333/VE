@@ -11,6 +11,18 @@ const execFileAsync = promisify(execFile);
 const ASSEMBLER = process.env.VE_AS31_PATH || join(homedir(), '.local/bin/ve-as31');
 const SIMULATOR = process.env.VE_S51_PATH || 's51';
 export const MAX_NATIVE_STEPS = 2_000_000;
+export const MAX_CONCURRENT_NATIVE_RUNS = 4;
+let activeNativeRuns = 0;
+
+export class NativeCapacityError extends Error {}
+
+/** Single-process admission for native compiler/simulator children. */
+export async function withNativeSlot<T>(operation: () => Promise<T>): Promise<T> {
+  if (activeNativeRuns >= MAX_CONCURRENT_NATIVE_RUNS) throw new NativeCapacityError('仿真服务正忙，请稍后重试');
+  activeNativeRuns++;
+  try { return await operation(); }
+  finally { activeNativeRuns--; }
+}
 
 export interface Native8051Result {
   toolchain: 'AS31 + SDCC ucSim/s51';
