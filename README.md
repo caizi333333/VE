@@ -2,6 +2,8 @@
 
 《微控制器原理及应用技术》的实验辅导平台。学生首页以原始报告的八个实验为主线，每项按课程知识、实验准备、编写与运行、观察与验证的顺序组织，再在遇到问题时向教师求助；查看下一实验不代表完成。另有 **中断不触发、串口乱码、定时不准** 三类模型辅助诊疗专题；模型生成教师初稿，学生只接收教师批准的版本。现有六件可独立打开的交互式原理课件，供相关实验补充观察中断、定时、串口、端口、扫描和控制时序；课件仍需任课教师核对后用于正式教学。
 
+**在线体验：**[学生实验台](https://ve.sunyancai.top/) · [教师工作台](https://ve.sunyancai.top/teacher)。登录需要教师创建的账号或演示学习卡；仓库不提供任何真实凭据。实验八所附普中-6图示来自《普中51单片机开发攻略 V1.2》，仅供对应板型核对，不表示本班采用该板型。
+
 ## 启动
 
 配套材料： [平台使用说明](docs/platform-user-guide.md) · [项目要求与证据对照表](docs/project-deliverables-map.md) · [提示词与模型约束说明](docs/prompt-specification.md) · [课堂试用验证记录](docs/pilot-validation.md)
@@ -29,7 +31,7 @@ npm start
 
 ## 远程试用入口
 
-当前账号的远程入口为 [ve.sunyancai.top](https://ve.sunyancai.top/)，教师入口为 [ve.sunyancai.top/teacher](https://ve.sunyancai.top/teacher)。源代码同步到私有仓库 [caizi333333/VE](https://github.com/caizi333333/VE)。Cloudflare Tunnel 将 HTTPS 请求转发到本机仅监听 `127.0.0.1:3110` 的生产实例；用户登录后仍由平台在服务端校验教师、学习卡及班级归属。macOS 登录时的 `com.sunyancai.ve-app` 和 `com.sunyancai.ve-tunnel` 启动项维持服务，配置位于当前用户的 `~/Library/LaunchAgents/`。更新代码后须先重新构建，再重启应用启动项；本地数据库和 `.env.local` 不在 GitHub 仓库内。
+当前账号的远程入口为 [ve.sunyancai.top](https://ve.sunyancai.top/)，教师入口为 [ve.sunyancai.top/teacher](https://ve.sunyancai.top/teacher)。源代码同步到公开仓库 [caizi333333/VE](https://github.com/caizi333333/VE)。Cloudflare Tunnel 将 HTTPS 请求转发到本机仅监听 `127.0.0.1:3110` 的生产实例；用户登录后仍由平台在服务端校验教师、学习卡及班级归属。macOS 登录时的 `com.sunyancai.ve-app` 和 `com.sunyancai.ve-tunnel` 启动项维持服务，配置位于当前用户的 `~/Library/LaunchAgents/`。更新代码后须先重新构建，再重启应用启动项；本地数据库和 `.env.local` 不在 GitHub 仓库内。
 
 这是**通过 Cloudflare 域名访问本机服务的远程试用**，不是把数据库和后端迁移到 Cloudflare Workers。电脑关机、睡眠或离线时网站不可用；第二个 Cloudflare 账号目前未在本机登录，尚无第二处部署。进入真实课堂前，还需核对实验设备、资料发布状态、备份与学校网络及数据要求。
 
