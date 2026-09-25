@@ -46,6 +46,17 @@ npm start
 
 目前尚未取得独立服务器的连接信息，容器镜像也未在目标 Linux 环境验证；上述步骤是迁移操作说明，不表示迁移或正式上线已经完成。
 
+迁移现有数据库时，先在旧机执行 `sqlite3 prisma/dev.db ".backup 'tmp/ve-transfer.db'"` 并核对 `sqlite3 tmp/ve-transfer.db 'PRAGMA integrity_check;'` 返回 `ok`。把该文件复制到服务器仓库根目录后，在服务器执行下列命令；执行前应确认当前目录、备份文件及其来源，且在新服务尚未启动时操作：
+
+```bash
+docker compose build
+docker compose run --rm --user root -v "$PWD/ve-transfer.db:/restore/ve.db:ro" ve \
+  sh -c 'cp /restore/ve.db /data/ve.db && chown node:node /data/ve.db && chmod 600 /data/ve.db && npx prisma migrate deploy && sqlite3 /data/ve.db "PRAGMA integrity_check; PRAGMA foreign_key_check;"'
+docker compose up -d
+```
+
+完整性检查应只输出 `ok`，外键检查无其他行；随后核对师生登录和原有复核记录。服务器上的 `ve-transfer.db` 在异地备份确认后从仓库工作目录移到受控备份位置。停用旧 Tunnel 之前保留旧机数据库的只读备份，以便回退。
+
 ## 开课和试用
 
 1. 教师登录，建立班级。真实课堂选择“课堂”；演示选择“演示”。填写学院要求的内容审查记录编号或说明。
