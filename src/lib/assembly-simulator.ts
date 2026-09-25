@@ -559,7 +559,7 @@ export class Simulator {
 
     // Pass 0: Collect EQU/BIT/DATA symbol definitions
     lines.forEach((line) => {
-      const cleaned = line.replace(/;.*$/, '').trim();
+      const cleaned = line.replace(/;.*$/, '').replace(/\/\/.*$/, '').trim();
       if (!cleaned) return;
       // Match: NAME EQU value | NAME BIT addr | NAME DATA addr
       const symMatch = cleaned.match(/^([A-Z_]\w*)\s+(?:EQU|BIT|DATA)\s+(.+)$/i);
@@ -569,7 +569,7 @@ export class Simulator {
     });
 
     lines.forEach((line, index) => {
-      const cleanedLine = line.replace(/;.*$/, '').trim(); // Remove comments and trim
+      const cleanedLine = line.replace(/;.*$/, '').replace(/\/\/.*$/, '').trim(); // Remove comments and trim
       if (!cleanedLine) return;
 
       // Skip EQU/BIT/DATA definitions (already handled in pass 0)

@@ -45,8 +45,8 @@ test('lab 2 output follows source code, including a changed delay count', () => 
   assert.ok(longer > normal);
 });
 
-test('lab 3 T0 reload changes observed P0.0 transition spacing', () => {
-  const sample = lab(3).code;
+test('legacy reference kernel still distinguishes 10 and 20 ms reloads', () => {
+  const sample = lab(3).code.replaceAll('#100', '#1');
   const spacing = (code: string) => {
     const sim = new Simulator(code);
     const edges: number[] = [];

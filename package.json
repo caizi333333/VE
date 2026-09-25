@@ -20,6 +20,7 @@
     "prisma:push": "prisma db push",
     "check": "npm run typecheck && npm run lint && npm run check:kg && npm test",
     "test": "tsx --test tests/*.test.ts",
+    "test:native": "VE_NATIVE_8051_TEST=1 tsx --test tests/native-8051.test.ts",
     "db:migrate": "tsx scripts/upgrade.ts",
     "teacher:create": "tsx scripts/create-teacher.ts",
     "test:integration": "tsx scripts/integration.ts",

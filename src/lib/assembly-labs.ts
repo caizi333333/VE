@@ -34,7 +34,7 @@ DELAY: MOV R7,#20
 WAIT: DJNZ R7,WAIT
 RET
 END` },
-  { id: 3, title: 'T0 与 P0.0 翻转', source: '按原实验报告实验三及备课 SHIYAN1.ASM 改写的教学摘录；初值为 12 MHz 理想条件下 10 ms', purpose: '观察 T0 溢出后是否进入中断并翻转 P0.0；TH0/TL0 改动会影响指令模型中的翻转步距。', observation: '模型按指令计数，实际毫秒与波形周期需按晶振和指令周期重新核算及实测。', port: 'P0', activeLow: false, code: `ORG 0000H
+  { id: 3, title: 'T0 与 P0.0 翻转', source: '按原实验报告实验三及备课 SHIYAN1.ASM 改写的教学摘录；12 MHz、经典12T、10 ms计数初值', purpose: '观察 T0 每次溢出后累计 100 次，再翻转 P0.0；两次翻转为完整 2 s 周期。', observation: '初值 0xD8F0 对应理想 10 ms；中断入口、重装和循环均有软件开销，真实完整周期须实测校准。', port: 'P0', activeLow: false, code: `ORG 0000H
 LJMP MAIN
 ORG 000BH
 LJMP T0_ISR
@@ -42,13 +42,17 @@ ORG 0040H
 MAIN: MOV TMOD,#01H
 MOV TH0,#0D8H
 MOV TL0,#0F0H
+MOV R6,#100
 SETB ET0
 SETB EA
 SETB TR0
 WAIT: SJMP WAIT
 T0_ISR: MOV TH0,#0D8H
 MOV TL0,#0F0H
+DJNZ R6,DONE
+MOV R6,#100
 CPL P0.0
+DONE:
 RETI
 END` },
   { id: 4, title: 'INT0 按键中断', source: '按原实验报告实验四的 P3.2/INT0 要求编写的教学示例；备课 SHIYAN41.ASM 实为 INT1，未照搬', purpose: '点击按键，观察 P1 计数变化和 30H。', observation: '本示例只验证中断进入与计数；数码管段码及实物消抖另需确认。', port: 'P1', activeLow: false, key: { port: 'P3', bit: 2, label: '按一次 P3.2 / INT0' }, code: `ORG 0000H
@@ -107,4 +111,45 @@ END` },
 
 export function assemblyLab(id: number): AssemblyLab | undefined {
   return ASSEMBLY_LABS.find(lab => lab.id === id);
+}
+
+
+export const MAX_ASSEMBLY_CHARS = 12_000;
+export const SUPPORTED_8051_MNEMONICS = new Set(['MOV', 'MOVC', 'MOVX', 'ACALL', 'LCALL', 'RET', 'RETI', 'AJMP', 'LJMP', 'SJMP', 'JMP', 'DJNZ', 'CJNE', 'RL', 'RR', 'RLC', 'RRC', 'SETB', 'CLR', 'CPL', 'ADD', 'ADDC', 'SUBB', 'DA', 'SWAP', 'XCH', 'XCHD', 'ANL', 'ORL', 'XRL', 'PUSH', 'POP', 'INC', 'DEC', 'JZ', 'JNZ', 'JC', 'JNC', 'JB', 'JNB', 'JBC', 'MUL', 'DIV', 'NOP', 'END']);
+
+/** Convert the course's Intel/Keil-style subset to the AS31 directive spelling. */
+export function normalizeAssembly(code: string): string {
+  if (!code.trim()) throw new Error('请先输入汇编程序。');
+  if (code.length > MAX_ASSEMBLY_CHARS) throw new Error(`程序不超过 ${MAX_ASSEMBLY_CHARS} 字符。`);
+  const seen = new Set<string>();
+  const lines = code.replace(/\r\n?/g, '\n').split('\n');
+  const converted = lines.map((original, index) => {
+    const lineNumber = index + 1;
+    const withoutComment = original.split(/;|\/\//, 1)[0]?.replaceAll('\t', ' ').trim() ?? '';
+    if (!withoutComment) return '';
+    if (/[^\x20-\x7e]/.test(withoutComment)) throw new Error(`第 ${lineNumber} 行含无法编译的字符；中文说明请放在分号后。`);
+    if (withoutComment.startsWith('.')) throw new Error(`第 ${lineNumber} 行不接受点指令；请使用 ORG/DB/DW/END。`);
+    const equ = withoutComment.match(/^([A-Za-z_]\w*)\s+EQU\s+(.+)$/i);
+    if (equ) return `.equ ${equ[1]}, ${equ[2]}`;
+    const labelMatch = withoutComment.match(/^([A-Za-z_]\w*):\s*(.*)$/);
+    const label = labelMatch?.[1];
+    const body = labelMatch ? labelMatch[2] : withoutComment;
+    if (label) {
+      const normalizedLabel = label.toUpperCase();
+      if (seen.has(normalizedLabel)) throw new Error(`第 ${lineNumber} 行标签 ${label} 重复。`);
+      seen.add(normalizedLabel);
+    }
+    if (!body) return `${label}:`;
+    const mnemonic = body.split(/\s+/)[0]?.toUpperCase();
+    if (!mnemonic || !SUPPORTED_8051_MNEMONICS.has(mnemonic) && !['ORG', 'DB', 'DW'].includes(mnemonic)) throw new Error(`第 ${lineNumber} 行指令 ${mnemonic || '空'} 暂不支持。`);
+    const normalizedBody = ['ORG', 'DB', 'DW', 'END'].includes(mnemonic)
+      ? body.replace(/^\w+/, `.${mnemonic.toLowerCase()}`)
+      : body;
+    if (/\bSJMP\s+\$/i.test(normalizedBody)) {
+      const selfLabel = label ?? `__SELF_${lineNumber}`;
+      return `${selfLabel}: ${normalizedBody.replace(/\bSJMP\s+\$/i, `SJMP ${selfLabel}`)}`;
+    }
+    return `${label ? `${label}: ` : ''}${normalizedBody}`;
+  });
+  return `${converted.join('\n')}\n`;
 }

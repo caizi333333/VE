@@ -1747,3 +1747,14 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .board-reference { margin: 18px 0 0; max-width: 720px; }
 .board-reference img { display: block; width: 100%; height: auto; border: 1px solid #d8e3da; border-radius: 10px; }
 .board-reference figcaption { color: #506958; font-size: 14px; margin-top: 8px; line-height: 1.55; }
+.assembly-clock { display: flex; align-items: center; gap: 10px; margin: 13px 0; font-size: 14px; font-weight: 700; }
+.assembly-clock select { min-height: 42px; border: 1px solid #b4c8b9; border-radius: 8px; background: white; color: #153e2b; padding: 0 10px; }
+.assembly-native { margin: 14px 0; padding: 13px 15px; background: #e7f3e9; border: 1px solid #8eb99a; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+.assembly-native > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.assembly-native strong { font-size: 14px; color: #164b2e; }
+.assembly-native p { margin: 8px 0 0; overflow-wrap: anywhere; }
+.assembly-trace { margin-top: 14px; border-top: 1px solid #b7d2bd; padding-top: 12px; }
+.assembly-trace-bars { display: flex; gap: 1px; height: 34px; align-items: stretch; margin-top: 8px; overflow: hidden; border: 1px solid #a9c3ae; background: white; }
+.assembly-trace-bars span { flex: 1; min-width: 2px; }
+.assembly-trace-bars .high { background: #2d7652; }
+.assembly-trace-bars .low { background: #ddd5a8; }
