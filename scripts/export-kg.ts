@@ -8,21 +8,27 @@
  * 输出：data/kg-8051.json
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-import {
-  knowledgePoints,
-  getPrerequisiteReason,
-  knowledgePointStats,
-  knowledgeRelationStats,
-  type KnowledgePoint,
-} from '../../../../EduCog-Micro/src/lib/knowledge-points.ts';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const SOURCE_REPO = 'EduCog-Micro/src/lib/knowledge-points.ts';
 const script_dir = dirname(fileURLToPath(import.meta.url));
 const output_path = resolve(script_dir, '../data/kg-8051.json');
+const source_path = resolve(script_dir, '../../../../EduCog-Micro/src/lib/knowledge-points.ts');
+
+interface KnowledgePoint {
+  id: string; name: string; level: 1 | 2 | 3; chapter: number;
+  parentId?: string | null; description?: string | null;
+  tutor?: { commonMistake?: string | null };
+  prerequisites?: string[]; appliedIn?: string[];
+}
+interface SourceModule {
+  knowledgePoints: KnowledgePoint[];
+  getPrerequisiteReason: (id: string, prerequisite: string) => string | null | undefined;
+  knowledgePointStats: { total: number; level1: number; level2: number; level3: number };
+  knowledgeRelationStats: { prerequisiteEdges: number; crossChapterEdges: number };
+}
 
 /** 导出后的依赖边：指向前置节点，并带上这条边为什么成立。 */
 interface ExportedPrerequisite {
@@ -55,6 +61,7 @@ interface ExportedPoint {
 function toExportedPoint(
   point: KnowledgePoint,
   name_by_id: ReadonlyMap<string, string>,
+  getPrerequisiteReason: SourceModule['getPrerequisiteReason'],
 ): ExportedPoint {
   const prerequisites = (point.prerequisites ?? []).map((prereq_id) => ({
     id: prereq_id,
@@ -75,9 +82,12 @@ function toExportedPoint(
   };
 }
 
-function main(): void {
+async function main(): Promise<void> {
+  if (!existsSync(source_path)) throw new Error(`源课程仓库未找到：${SOURCE_REPO}；已提交的 data/kg-8051.json 可独立用于平台运行`);
+  // Resolve only when this one-off export is invoked; builds never need the sibling repository.
+  const { knowledgePoints, getPrerequisiteReason, knowledgePointStats, knowledgeRelationStats } = await import(pathToFileURL(source_path).href) as SourceModule;
   const name_by_id = new Map(knowledgePoints.map((point) => [point.id, point.name]));
-  const exported_points = knowledgePoints.map((point) => toExportedPoint(point, name_by_id));
+  const exported_points = knowledgePoints.map((point) => toExportedPoint(point, name_by_id, getPrerequisiteReason));
 
   const dangling_edges = exported_points.flatMap((point) =>
     point.prerequisites
@@ -123,4 +133,4 @@ function main(): void {
   );
 }
 
-main();
+void main();
