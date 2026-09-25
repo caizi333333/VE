@@ -28,3 +28,10 @@ test('guide tasks keep secondary assignments in the original eight-report templa
   assert.match(labGuide(6)!.goal, /救护车/);
   assert.match(labGuide(8)!.task, /0\.3\/0\.7/);
 });
+
+test('lab eight distinguishes the report wording from the two board-manual motor circuits', () => {
+  const guide = labGuide(8)!;
+  assert.match(guide.ppt, /4\.3.*4\.4.*版本待核/);
+  assert.match(guide.wiring.join(' '), /ULN2003\/J46–J47.*五线四相.*TC1508S\/J80–J81.*四线双极型/);
+  assert.match(guide.code.join(' '), /不可不经驱动方式转换/);
+});

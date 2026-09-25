@@ -27,6 +27,12 @@ npm start
 
 数据库由 `DATABASE_URL` 指定，默认 `prisma/dev.db`。本轮按**单个 Node.js 实例、本地 SQLite 文件**设计；登录频率限制在进程内。部署到多实例前需要共享限流、集中会话管理和数据库适配，不能仅替换连接串。正式部署应配置 HTTPS，并设置 `SECURE_COOKIES=true`。
 
+## 远程试用入口
+
+当前账号的远程入口为 [ve.sunyancai.top](https://ve.sunyancai.top/)，教师入口为 [ve.sunyancai.top/teacher](https://ve.sunyancai.top/teacher)。源代码同步到私有仓库 [caizi333333/VE](https://github.com/caizi333333/VE)。Cloudflare Tunnel 将 HTTPS 请求转发到本机仅监听 `127.0.0.1:3110` 的生产实例；用户登录后仍由平台在服务端校验教师、学习卡及班级归属。macOS 登录时的 `com.sunyancai.ve-app` 和 `com.sunyancai.ve-tunnel` 启动项维持服务，配置位于当前用户的 `~/Library/LaunchAgents/`。更新代码后须先重新构建，再重启应用启动项；本地数据库和 `.env.local` 不在 GitHub 仓库内。
+
+这是**通过 Cloudflare 域名访问本机服务的远程试用**，不是把数据库和后端迁移到 Cloudflare Workers。电脑关机、睡眠或离线时网站不可用；第二个 Cloudflare 账号目前未在本机登录，尚无第二处部署。进入真实课堂前，还需核对实验设备、资料发布状态、备份与学校网络及数据要求。
+
 ## 开课和试用
 
 1. 教师登录，建立班级。真实课堂选择“课堂”；演示选择“演示”。填写学院要求的内容审查记录编号或说明。
