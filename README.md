@@ -39,14 +39,16 @@ npm start
 
 仓库提供 `Dockerfile` 与 `compose.yaml`，在单台 Linux 服务器上运行一个 Next.js 实例、持久化 SQLite 和真实 AS31／s51 工具链。服务器需安装 Docker Engine、Compose 插件，确保能连接 GitHub、npm、Debian 软件源和 Docker Hub。推荐至少 2 vCPU、4 GB 内存；这只是首轮容量配置，必须在目标机测量。`compose.yaml` 仅把应用端口绑定到服务器的 `127.0.0.1:3100`；外网路由应由该服务器的独立 Cloudflare Tunnel 转发，不能直接开放数据库或改动其他站点。
 
-1. 在服务器克隆本公开仓库，从 `.env.example` 复制为仓库根目录 `server.env`，只在服务器填写模型密钥；设置文件权限为 `600`。`server.env` 已被 Git 忽略。运行 `docker compose build`，并检查 `docker compose run --rm ve sh -c 'node -v && ve-as31 -h >/dev/null 2>&1; command -v s51'`；汇编器帮助命令的退出码可能不是零，应分别核对二进制存在。
+1. 在服务器克隆本公开仓库，从 `.env.example` 复制为仓库根目录 `server.env`，只在服务器填写模型密钥；设置文件权限为 `600`。`server.env` 已被 Git 忽略。运行 `docker compose build`，并检查 `docker compose run --rm ve sh -c 'node -v && command -v ve-as31 && command -v ucsim_51'`。
 2. 若迁移当前数据，先在旧机用 SQLite `.backup` 取得一致副本，经加密渠道复制到服务器，不通过 GitHub 传数据库或口令。在服务器将备份挂载到容器并复制到 `/data/ve.db`，把文件所有者设为容器用户 `node`，再执行 `docker compose run --rm ve npx prisma migrate deploy`。若是全新数据库，直接执行迁移并创建教师账号；用终端静默输入 `TEACHER_INITIAL_PASSWORD` 传给创建命令，避免一次性容器销毁后丢失随机口令。
 3. 启动 `docker compose up -d` 后，在服务器本地验证首页、教师登录、八项实验汇编与仿真、资料下载、诊疗待审和复核。用数据库完整性、外键和记录数检查迁移；再在独立域名或临时子域验证 HTTPS、Secure Cookie、教师和学生权限。只有新站的数据和操作都核对后，才把 `ve.sunyancai.top` 这一条路由切到新 Tunnel；不要调整 `.top` 下的其他项目。
 4. 建立定期的 SQLite 在线备份并复制到服务器之外，做一次异机恢复演练；记录镜像版本、数据库版本、工具链版本和回退步骤。Cloudflare Tunnel 的服务器安装及域名路由参见[官方部署说明](https://developers.cloudflare.com/tunnel/get-started/)。
 
-目前尚未取得独立服务器的连接信息，容器镜像也未在目标 Linux 环境验证；上述步骤是迁移操作说明，不表示迁移或正式上线已经完成。
+容器镜像已在 GitHub 的 Linux 环境通过构建、真实 8051 工具链及应用集成测试；尚未在独立运行主机部署或验证持续运行。上述步骤是操作说明，不表示正式上线已经完成。
 
-若希望像“芯智育才”一样**从 GitHub 自动构建并发布**，仓库另备有 `render.yaml`：它定义新加坡区域的单实例 Docker 网站和 1 GB 持久磁盘，保留现有 SQLite、教师登录及 8051 仿真。GitHub Actions 在每次推送后构建 Linux 镜像、执行真实工具链测试并尝试发布到 GitHub Container Registry；工作流通过前不把镜像视为可发布版本。创建 Render 服务需要连接 GitHub 账号并启用付费计算及磁盘；配置的 1 CPU／2 GB 方案按 2026 年 9 月官网价格约为每月 25 美元，磁盘约 0.25 美元／GB／月，实际账单以开通页面为准。`render.yaml` 只是可审查配置，**提交到 GitHub 不会自动开通收费服务**。当前数据库及账号仍在本机，不会随 Git 推送进入云端；新站创建后仍须做受控数据恢复、登录和仿真复验，再切域名。方案依据：[Render Git 仓库部署](https://render.com/docs/web-services)、[持久磁盘](https://render.com/docs/disks)、[价格](https://render.com/pricing)。
+若希望像“芯智育才”一样**从 GitHub 自动构建并发布**，仓库另备有 `render.yaml`：它定义新加坡区域的单实例 Docker 网站和 1 GB 持久磁盘，保留现有 SQLite、教师登录及 8051 仿真。[GitHub Linux 验证](https://github.com/caizi333333/VE/actions/runs/36097412677)已经通过，镜像也已推送到 GitHub Container Registry；Render 将直接从同一仓库构建和运行。创建 Render 服务需要连接 GitHub 账号并启用付费计算及磁盘；配置的 1 CPU／2 GB 方案按 2026 年 9 月官网价格约为每月 25 美元，磁盘约 0.25 美元／GB／月，实际账单以开通页面为准。`render.yaml` 只是可审查配置，**提交到 GitHub 不会自动开通收费服务**。当前数据库及账号仍在本机，不会随 Git 推送进入云端；新站创建后仍须完成登录、仿真和持久化复验，再切域名。方案依据：[Render Git 仓库部署](https://render.com/docs/web-services)、[持久磁盘](https://render.com/docs/disks)、[价格](https://render.com/pricing)。
+
+若先按你的要求只用 GitHub 建一个**独立演示站**，可以让托管服务在新磁盘上建立空数据库，再在服务终端创建新的教师账号和演示学习卡；本机旧账号、旧单号与历史记录不会自动出现。若希望云端接续现有记录，必须把经 SQLite 在线备份的数据库单独、安全地恢复到云端磁盘。两种做法都不能把 Git 仓库当数据库。由于申报书要求学生代码和提问脱敏后存于校内私有空间，外部托管站在学校确认数据处理条件前只承载演示数据，不采集真实课堂记录。
 
 迁移现有数据库时，先在旧机执行 `sqlite3 prisma/dev.db ".backup 'tmp/ve-transfer.db'"` 并核对 `sqlite3 tmp/ve-transfer.db 'PRAGMA integrity_check;'` 返回 `ok`。把该文件复制到服务器仓库根目录后，在服务器执行下列命令；执行前应确认当前目录、备份文件及其来源，且在新服务尚未启动时操作：
 
