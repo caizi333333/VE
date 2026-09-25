@@ -1758,3 +1758,11 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-trace-bars span { flex: 1; min-width: 2px; }
 .assembly-trace-bars .high { background: #2d7652; }
 .assembly-trace-bars .low { background: #ddd5a8; }
+.assembly-display { margin-top: 14px; border-top: 1px solid #b7d2bd; padding-top: 12px; }
+.assembly-display > div { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.assembly-display span { display: grid; gap: 2px; text-align: center; min-width: 0; border: 1px solid #a7bea9; border-radius: 6px; background: #12261b; color: #def3df; padding: 5px 1px; }
+.assembly-display small { color: #c2d6c4; font-size: 10px; }
+.assembly-display b { font: 700 20px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.assembly-phase { margin-top: 14px; border-top: 1px solid #b7d2bd; padding-top: 12px; }
+.assembly-phase p { overflow-wrap: anywhere; color: #163f2c; font-weight: 750; }
+.assembly-phase small { color: #526457; font-size: 12px; line-height: 1.5; }

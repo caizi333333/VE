@@ -11,6 +11,10 @@ const schema = z.object({
   steps: z.number().int().min(0).max(MAX_NATIVE_STEPS),
   key_steps: z.array(z.number().int().min(0).max(MAX_NATIVE_STEPS)).max(8).default([]),
   clock_hz: z.number().int().min(1_000_000).max(24_000_000).default(12_000_000),
+  trace_port: z.enum(['P0', 'P1', 'P2', 'P3']).optional(),
+  secondary_port: z.enum(['P0', 'P1', 'P2', 'P3']).optional(),
+  tertiary_port: z.enum(['P0', 'P1', 'P2', 'P3']).optional(),
+  trace_window: z.number().int().min(1).max(MAX_NATIVE_STEPS).optional(),
 }).strict();
 
 export const POST = withErrors(async (request: Request) => {
@@ -22,8 +26,10 @@ export const POST = withErrors(async (request: Request) => {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) throw new HttpError(400, '汇编参数无效');
   if (parsed.data.key_steps.length && parsed.data.lab_id !== 4) throw new HttpError(400, '本实验未设置 INT0 按键');
+  if (parsed.data.secondary_port && (!parsed.data.trace_port || parsed.data.secondary_port === parsed.data.trace_port)) throw new HttpError(400, '双端口采样参数无效');
+  if (parsed.data.tertiary_port && (!parsed.data.secondary_port || parsed.data.tertiary_port === parsed.data.trace_port || parsed.data.tertiary_port === parsed.data.secondary_port)) throw new HttpError(400, '三端口采样参数无效');
   try {
-    const result = await compileAndSimulate(parsed.data.code, parsed.data.steps, parsed.data.key_steps, parsed.data.clock_hz, assemblyLab(parsed.data.lab_id)?.port);
+    const result = await compileAndSimulate(parsed.data.code, parsed.data.steps, parsed.data.key_steps, parsed.data.clock_hz, parsed.data.trace_port ?? assemblyLab(parsed.data.lab_id)?.port, parsed.data.secondary_port, parsed.data.tertiary_port, parsed.data.trace_window);
     return NextResponse.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (cause) {
     const error = cause as NodeJS.ErrnoException;

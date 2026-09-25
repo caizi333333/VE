@@ -1,0 +1,333 @@
+/** Course-owned historical 8051 programs. Lab 7 is recovered from a Keil listing, not an original .asm file. */
+
+/** 2025备课 S22.asm；去除损坏的旧编码注释，保留指令与常量。 */
+export const LAB2_GROUP_LED_ASM = `ORG 0000H
+LJMP MAIN
+ORG 0032H
+MAIN: MOV R0,#02H
+MOV A,#0AAH
+MOV P1,A
+LCALL DELAY
+CPL A
+MOV P1,A
+LCALL DELAY
+MOV A,#0FH
+MOV P1,A
+LCALL DELAY
+CPL A
+MOV P1,A
+LCALL DELAY
+LOOP: MOV A,#00H
+MOV P1,A
+LCALL DELAY
+CPL A
+MOV P1,A
+LCALL DELAY
+DJNZ R0,LOOP
+SJMP MAIN
+DELAY: MOV R5,#11H
+DELAY1: MOV R6,#0FFH
+DELAY2: MOV R7,#0FFH
+DELAY3: DJNZ R7,DELAY3
+DJNZ R6,DELAY2
+DJNZ R5,DELAY1
+RET
+END`;
+
+/** 2025备课 SHIYAN1.ASM；原文以20ms重装、50次累计翻转P0.0。 */
+export const LAB3_ORIGINAL_TIMER_ASM = `ORG 0000H
+LJMP MAIN
+ORG 000BH
+LJMP DVT0
+ORG 0040H
+MAIN: MOV TMOD,#01H
+MOV TH0,#0B1H
+MOV TL0,#0E0H
+MOV R7,#50
+SETB ET0
+SETB EA
+SETB TR0
+SJMP $
+DVT0: DJNZ R7,NT0
+MOV R7,#50
+CPL P0.0
+NT0: MOV TH0,#0B1H
+MOV TL0,#0E0H
+RETI
+END`;
+
+/** 2025备课 xm2.asm；历史程序，按原文保留，未证明本班板卡匹配 */
+
+export const LAB5_SCAN_ASM = `ORG 0000H
+LJMP MAIN
+ORG 000BH
+LJMP DVT0
+ORG 0040H
+MAIN:
+	MOV TMOD,#01H
+	MOV TH0,#0FCH 
+    MOV TL0,#018H
+    MOV R0,#50
+	MOV 20H,#50
+	MOV R1,#10
+	MOV	R2,#0
+    SETB ET0      
+    SETB EA       
+    SETB TR0
+	MOV	P0,#3fH
+	MOV	P1,#0FEH
+    SJMP $ 		
+DVT0:
+	DJNZ R0,NT0
+	DEC 20H
+	MOV  R0,20H
+	CJNE R0,#2,DVT1
+	MOV 20H,#3
+	
+		DVT1:
+		    INC	R2
+			MOV	A,R2
+			MOV	DPTR,#TAB1
+			MOVC A,@A+DPTR
+			MOV	P0,A
+			MOV	A,R2
+			MOV	DPTR,#TAB2
+			MOVC A,@A+DPTR
+			MOV	P1,A
+			DJNZ R1,NT0
+			MOV R1,#10
+			MOV R2,#0
+			MOV	P0,#3fH
+			MOV	P1,#0FEH 
+	NT0:
+		MOV TH0,#0FCH 
+		MOV TL0,#18H; 
+		RETI
+TAB1:DB 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07
+TAB2:DB 0xfe,0xfd,0xfb,0xf7,0xef,0xdf,0xbf,0x7f
+END
+`;
+
+/** 2025备课 S62.asm；两段不同翻转频率，按原文保留 */
+
+export const LAB6_TWO_TONE_ASM = `ORG 0000H
+LJMP MAIN
+ORG 0040H
+MAIN: MOV	R0,#0FAH
+DLV1: CPL	P2.0
+	  LCALL	DELAY
+	  DJNZ	R0,DLV1
+	  
+      MOV	R0,#0FAH	 
+DLV2:
+	  CPL	P2.0
+	  LCALL	DELAY
+	  LCALL	DELAY
+	  DJNZ	R0,DLV2
+	  AJMP 	MAIN
+	
+DELAY:
+	MOV R5,#32
+DELAY1:
+	MOV R6,#7
+DELAY2:
+	DJNZ R6,DELAY2
+	DJNZ R5,DELAY1
+	RET
+END
+`;
+
+/** 2025备课 S71.lst 的 SOURCE 列恢复；经 AS31 重编译与 S7.hex 183 字节逐地址一致 */
+
+export const LAB7_CLOCK_ASM = `ORG 0000H
+LJMP MAIN
+ORG 000BH
+LJMP DVT0
+ORG 0040H
+MAIN:
+MOV TMOD,#01H   ;0000 0001
+MOV TH0,#0B1H    ;20ms*50
+MOV TL0,#0E0H
+MOV R3,#50       ;50ci,20ms*50
+MOV 31H,#5       ;23-59-55       
+MOV 32H,#5
+MOV 33H,#10
+MOV 34H,#9
+MOV 35H,#5
+MOV 36H,#10
+MOV 37H,#3
+MOV 38H,#2
+SETB ET0      
+SETB EA       
+SETB TR0
+LOOP:
+MOV R0,#8    ;v  23-59-59
+MOV R1,#31H
+MOV     R2,#0
+LOOP1:
+MOV     A,@R1
+MOV     DPTR,#TAB1
+MOVC A,@A+DPTR
+MOV     P0,A
+MOV     A,R2
+MOV     DPTR,#TAB2
+MOVC A,@A+DPTR   ;1111 1110
+MOV     P1,A
+INC     R1
+INC R2      
+lcall DELAY                 
+DJNZ R0,LOOP1
+AJMP LOOP                       
+DVT0:DJNZ R3,NT0    ;23-59-55 
+MOV R3,#50
+INC 31H
+MOV A,31H
+CJNE A,#0AH,NT0
+MOV 31H,#0
+INC 32H
+MOV A,32H
+CJNE A,#06H,NT0
+MOV 32H,#0
+INC 34H
+MOV A,34H
+CJNE A,#0AH,NT0
+MOV 34H,#0
+INC 35H
+MOV A,35H
+CJNE A,#06H,NT0
+MOV 35H,#0
+INC 37H
+MOV A,37H
+CJNE A,#04H,DVT1
+MOV A,38H 
+CJNE A,#02H,DVT1
+MOV 37H,#0
+MOV 38H,#0
+DVT1:CJNE A,#0AH,NT0
+MOV 37H,#0
+INC 38H
+MOV A,38H              
+NT0:
+MOV TH0,#0B1H 
+MOV TL0,#0E0H 
+RETI
+DELAY:
+MOV R5,#04H
+DELAY1:
+MOV R6,#0FFH
+DELAY2:
+DJNZ R6,DELAY2
+DJNZ R5,DELAY1
+RET
+TAB1:DB 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7D,0x07,0x7F,0x6F,0x40
+TAB2:DB 0xfe,0xfd,0xfb,0xf7,0xef,0xdf,0xbf,0x7f
+END
+`;
+
+/** Report task 5: corrected 0–7 scan; based on xm2.asm with the out-of-range table access removed. */
+export const LAB5_SCAN_CORRECTED_ASM = `ORG 0000H
+LJMP MAIN
+ORG 000BH
+LJMP T0_ISR
+ORG 0040H
+MAIN: MOV TMOD,#01H
+MOV TH0,#0FCH
+MOV TL0,#018H
+MOV 20H,#50
+MOV R0,#50
+MOV R2,#0
+LCALL DISPLAY
+SETB ET0
+SETB EA
+SETB TR0
+WAIT: SJMP WAIT
+T0_ISR: MOV TH0,#0FCH
+MOV TL0,#018H
+DJNZ R0,DONE
+MOV A,20H
+CJNE A,#1,SHORTER
+SJMP STABLE
+SHORTER: DEC 20H
+STABLE: MOV R0,20H
+INC R2
+CJNE R2,#8,SHOW
+MOV R2,#0
+SHOW: LCALL DISPLAY
+DONE: RETI
+DISPLAY: MOV P1,#0FFH
+MOV DPTR,#SEGS
+MOV A,R2
+MOVC A,@A+DPTR
+MOV P0,A
+MOV DPTR,#SELECTS
+MOV A,R2
+MOVC A,@A+DPTR
+MOV P1,A
+RET
+SEGS: DB 03FH,06H,05BH,04FH,066H,06DH,07DH,07H
+SELECTS: DB 0FEH,0FDH,0FBH,0F7H,0EFH,0DFH,0BFH,07FH
+END`;
+
+/** Course-owned 2025 S61.asm: intermittent buzzer output, separate from the two-tone task. */
+export const LAB6_INTERMITTENT_ASM = `ORG 0000H
+LJMP MAIN
+ORG 0040H
+MAIN: SETB P2.0
+LCALL DELAY
+CLR P2.0
+LCALL DELAY
+LCALL DELAY
+LCALL DELAY
+AJMP MAIN
+DELAY: MOV R5,#32
+DELAY1: MOV R6,#7
+DELAY2: DJNZ R6,DELAY2
+DJNZ R5,DELAY1
+RET
+END`;
+
+function insertOnce(source: string, before: string, after: string): string {
+  if (source.split(before).length !== 2) throw new Error(`Clock source anchor changed: ${before}`);
+  return source.replace(before, after);
+}
+
+/** Generated extension of the byte-verified 2025 clock: T1 drives a virtual 1 kHz alarm for one minute rollover. */
+export const LAB7_CLOCK_ALARM_ASM = [
+  ['ORG 0040H', 'ORG 001BH\nLJMP T1_ISR\nORG 0040H'],
+  ['MOV TMOD,#01H', 'MOV TMOD,#11H\nMOV 30H,#0\nSETB P2.0\nMOV TH1,#0FEH\nMOV TL1,#00CH'],
+  ['MOV 31H,#5', 'MOV 31H,#9'],
+  ['SETB TR0', 'SETB TR0\nSETB ET1\nSETB TR1'],
+  ['DVT0:DJNZ R3,NT0', 'DVT0:PUSH ACC\nDJNZ R3,NT0'],
+  ['INC 34H', 'INC 34H\nMOV 30H,#50'],
+  ['NT0:\nMOV TH0,#0B1H', 'NT0:\nMOV A,30H\nJZ NO_ALARM_TICK\nDEC 30H\nNO_ALARM_TICK: MOV TH0,#0B1H'],
+  ['MOV TL0,#0E0H \nRETI\nDELAY:', 'MOV TL0,#0E0H\nPOP ACC\nRETI\nT1_ISR: PUSH ACC\nMOV TH1,#0FEH\nMOV TL1,#00CH\nMOV A,30H\nJZ ALARM_OFF\nCPL P2.0\nSJMP T1_DONE\nALARM_OFF: SETB P2.0\nT1_DONE: POP ACC\nRETI\nDELAY:'],
+].reduce((source, [before, after]) => insertOnce(source, before, after), LAB7_CLOCK_ASM);
+
+/** Abstract A/B/C/D phase outputs on P1.0–P1.3, independent of a physical motor driver. */
+export const LAB8_ABSTRACT_STEPPER_ASM = `ORG 0000H
+MOV R2,#0
+LOOP: MOV DPTR,#PHASES
+MOV A,R2
+MOVC A,@A+DPTR
+MOV P1,A
+LCALL DELAY
+INC R2
+CJNE R2,#8,LOOP
+MOV R2,#0
+SJMP LOOP
+DELAY: MOV R7,#80
+WAIT: DJNZ R7,WAIT
+RET
+PHASES: DB 01H,03H,02H,06H,04H,0CH,08H,09H
+END`;
+
+/** Second PWM teaching variant: complementary 70/30 instruction-loop durations. */
+export const LAB8_PWM_70_ASM = `ORG 0000H
+LOOP: SETB P1.0
+MOV R7,#70
+HIGH: DJNZ R7,HIGH
+CLR P1.0
+MOV R7,#30
+LOW: DJNZ R7,LOW
+SJMP LOOP
+END`;

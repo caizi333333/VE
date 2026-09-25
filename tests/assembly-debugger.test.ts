@@ -81,7 +81,7 @@ test('lab 5 segment code and lab 7 minute carry are visible in machine state', (
   const segment = new Simulator(lab(5).code);
   segment.stepBatch(2);
   assert.equal(segment.state.portValues.P0, 0x3f);
-  assert.equal(segment.state.portValues.P2, 0xfe);
+  assert.equal(segment.state.portValues.P1, 0xfe);
   const clock = new Simulator(lab(7).code);
   clock.stepBatch(20);
   assert.equal(clock.state.ram[0x30], 1);

@@ -1,4 +1,6 @@
-/** Eight small, editable 8051 debugging exercises. These are teaching extracts, not verbatim report programs. */
+import { LAB2_GROUP_LED_ASM, LAB3_ORIGINAL_TIMER_ASM, LAB5_SCAN_ASM, LAB5_SCAN_CORRECTED_ASM, LAB6_INTERMITTENT_ASM, LAB6_TWO_TONE_ASM, LAB7_CLOCK_ALARM_ASM, LAB7_CLOCK_ASM, LAB8_ABSTRACT_STEPPER_ASM, LAB8_PWM_70_ASM } from './assembly-presets';
+
+/** Eight editable 8051 exercises, with source-backed historical variants where available. */
 export interface AssemblyLab {
   id: number;
   title: string;
@@ -9,6 +11,7 @@ export interface AssemblyLab {
   port?: 'P0' | 'P1' | 'P2' | 'P3';
   activeLow?: boolean;
   key?: { port: 'P3'; bit: number; label: string };
+  variants?: readonly { id: string; title: string; source: string; code: string; port?: 'P0' | 'P1' | 'P2' | 'P3' }[];
 }
 
 export const ASSEMBLY_LABS: readonly AssemblyLab[] = [
@@ -24,7 +27,7 @@ POP 30H
 POP ACC
 SJMP $
 END` },
-  { id: 2, title: 'P1 流水灯', source: '按原实验报告实验二及备课 S21.ASM 整理的短延时教学摘录', purpose: '运行后观察 P1 位移；修改延时循环次数可比较达到下一盏灯所需指令数。', observation: '低电平为点亮示意，先从 P1.0 向 P1.7 移动。', port: 'P1', activeLow: true, code: `ORG 0000H
+  { id: 2, title: 'P1 流水灯', source: '按原实验报告实验二及备课 S21.ASM 整理的短延时教学摘录', purpose: '运行后观察 P1 位移；切换2025备课分组程序可看交替、四位和全亮全灭模式。', observation: '低电平为点亮示意，先从 P1.0 向 P1.7 移动。原始分组程序延时很长，需累计推进较多指令。', port: 'P1', activeLow: true, code: `ORG 0000H
 MOV A,#0FEH
 LOOP: MOV P1,A
 LCALL DELAY
@@ -33,7 +36,7 @@ SJMP LOOP
 DELAY: MOV R7,#20
 WAIT: DJNZ R7,WAIT
 RET
-END` },
+END`, variants: [{ id: 'group-2025', title: '2025备课：分组与全亮全灭', source: 'S22.asm 原指令与常量；旧编码损坏的注释已去除，未改程序逻辑', code: LAB2_GROUP_LED_ASM, port: 'P1' }] },
   { id: 3, title: 'T0 与 P0.0 翻转', source: '按原实验报告实验三及备课 SHIYAN1.ASM 改写的教学摘录；12 MHz、经典12T、10 ms计数初值', purpose: '观察 T0 每次溢出后累计 100 次，再翻转 P0.0；两次翻转为完整 2 s 周期。', observation: '初值 0xD8F0 对应理想 10 ms；中断入口、重装和循环均有软件开销，真实完整周期须实测校准。', port: 'P0', activeLow: false, code: `ORG 0000H
 LJMP MAIN
 ORG 000BH
@@ -54,7 +57,7 @@ MOV R6,#100
 CPL P0.0
 DONE:
 RETI
-END` },
+END`, variants: [{ id: 'timer-2025', title: '2025备课：20ms×50累计', source: 'SHIYAN1.ASM 原指令及定时常量，按12 MHz经典12T运行', code: LAB3_ORIGINAL_TIMER_ASM, port: 'P0' }] },
   { id: 4, title: 'INT0 按键中断', source: '按原实验报告实验四的 P3.2/INT0 要求编写的教学示例；备课 SHIYAN41.ASM 实为 INT1，未照搬', purpose: '点击按键，观察 P1 计数变化和 30H。', observation: '本示例只验证中断进入与计数；数码管段码及实物消抖另需确认。', port: 'P1', activeLow: false, key: { port: 'P3', bit: 2, label: '按一次 P3.2 / INT0' }, code: `ORG 0000H
 LJMP MAIN
 ORG 0003H
@@ -70,20 +73,20 @@ INT0_ISR: INC 30H
 MOV P1,30H
 RETI
 END` },
-  { id: 5, title: '数码管段码与位选', source: '按原实验报告实验五的段选/位选任务编写的教学示例', purpose: '观察 P0 段码、P2 位选；修改段码后重新运行。', observation: '3FH 为常见共阴 0 段码示例；实际共阳/共阴、驱动和引脚须按本班设备确认。', port: 'P0', activeLow: false, code: `ORG 0000H
+  { id: 5, title: '数码管段码与位选', source: '按原实验报告实验五及2025备课端口用法编写的教学示例', purpose: '观察 P0 段码、P1 位选；切换到历史扫描程序可调试 0–7 轮显。', observation: '历史程序采用 P0 段码、P1 低有效位选；仍需按本班实物核对极性与引脚。', port: 'P0', activeLow: false, code: `ORG 0000H
 MOV P0,#3FH
-MOV P2,#0FEH
+MOV P1,#0FEH
 LOOP: SJMP LOOP
-END` },
-  { id: 6, title: '蜂鸣器翻转', source: '按原实验报告实验六及备课 S62.asm 整理的短延时教学摘录', purpose: '观察 P2.0 翻转次数；改 R6 的循环次数会改变翻转步距。', observation: '这里只表示无源蜂鸣器控制脚的翻转，不生成可听音频；有源器件另需核对。', port: 'P2', activeLow: false, code: `ORG 0000H
+END`, variants: [{ id: 'scan-fixed', title: '校正版：0–7轮显与递减间隔', source: '根据报告任务修正2025年 xm2.asm 的索引8、9越界访问；保留原程序供对照', code: LAB5_SCAN_CORRECTED_ASM, port: 'P0' }, { id: 'scan-2025', title: '历史原文：xm2.asm（含越界现象）', source: '原始 xm2.asm；R1设为10导致表索引8及9越界，供定位错误', code: LAB5_SCAN_ASM, port: 'P0' }] },
+  { id: 6, title: '蜂鸣器翻转', source: '按原实验报告实验六及备课 S62.asm 整理的短延时教学摘录', purpose: '观察 P2.0 翻转；可切换到原始两音程序比较两个翻转节奏。', observation: '控制脚的翻转能核对两段频率；是否可听、音色和有源/无源器件行为仍取决于实物。', port: 'P2', activeLow: false, code: `ORG 0000H
 MAIN: CPL P2.0
 LCALL DELAY
 SJMP MAIN
 DELAY: MOV R6,#20
 LOOP: DJNZ R6,LOOP
 RET
-END` },
-  { id: 7, title: '电子时钟进位', source: '按原实验报告实验七的秒→分→时逻辑编写的最小单步示例', purpose: '观察内部 RAM 30H 秒、31H 分、32H 时；修改初始值可检验 59→00 进位。', observation: '本例只验证进位逻辑，未模拟八位数码管扫描或一分钟报警。', code: `ORG 0000H
+END`, variants: [{ id: 'intermittent-2025', title: '2025备课：间断发声', source: '原始 S61.asm，控制脚高低状态的持续时间不同', code: LAB6_INTERMITTENT_ASM, port: 'P2' }, { id: 'two-tone-2025', title: '2025备课：双音交替', source: '原始 S62.asm，包含两段不同延时的 P2.0 翻转', code: LAB6_TWO_TONE_ASM, port: 'P2' }] },
+  { id: 7, title: '电子时钟进位', source: '按原实验报告实验七的秒→分→时逻辑编写的最小单步示例', purpose: '观察进位逻辑；可切换至2025年 Keil 编译记录中的八位扫描程序。', observation: '历史八位程序可观察 P0 段码、P1 位选和 RAM 31H–38H；它未包含每分钟蜂鸣器报警。', code: `ORG 0000H
 MOV 30H,#58
 MOV 31H,#59
 MOV 32H,#12
@@ -97,7 +100,7 @@ CJNE A,#60,NEXT
 MOV 31H,#0
 INC 32H
 NEXT: SJMP TICK
-END` },
+END`, variants: [{ id: 'clock-2025', title: '2025备课：八位电子时钟', source: '从 S71.lst 的源代码列恢复；重编译机器码与 S7.hex 逐地址一致', code: LAB7_CLOCK_ASM, port: 'P0' }, { id: 'clock-alarm', title: '扩展示例：时钟＋分钟蜂鸣', source: '以已核对 S71 程序为基础新增 T1/P2.0 报警；并非原始备课源码，按经典12T虚拟配置演示', code: LAB7_CLOCK_ALARM_ASM, port: 'P0' }] },
   { id: 8, title: '电机 PWM 输出', source: '按原实验报告实验八占空比 0.3/0.7 要求编写的端口教学示例', purpose: '观察 P1.0 高低电平的指令步距；修改高低段循环值比较占比。', observation: '仅模拟端口开关，不推断实际电机转速；步进电机驱动须确认 ULN2003 或 TC1508S 后选对应相序。', port: 'P1', activeLow: false, code: `ORG 0000H
 LOOP: SETB P1.0
 MOV R7,#30
@@ -106,7 +109,7 @@ CLR P1.0
 MOV R7,#70
 LOW: DJNZ R7,LOW
 SJMP LOOP
-END` },
+END`, variants: [{ id: 'pwm-70', title: 'PWM高电平约70%对照', source: '按报告0.7占空比目标生成；只验证控制脚，不推断电机转速', code: LAB8_PWM_70_ASM, port: 'P1' }, { id: 'stepper-abstract', title: 'A–AB–B–BC–C–CD–D–DA 抽象相序', source: '按报告相序生成，A/B/C/D暂映射到P1.0–P1.3；不是ULN2003或TC1508S实物接线码', code: LAB8_ABSTRACT_STEPPER_ASM, port: 'P1' }] },
 ];
 
 export function assemblyLab(id: number): AssemblyLab | undefined {

@@ -23,8 +23,10 @@ export interface Native8051Result {
   machine_clocks: number;
   elapsed_seconds: number;
   registers: { A: number; SP: number; P0: number; P1: number; P2: number; P3: number; TMOD: number; TCON: number; TH0: number; TL0: number };
-  ram: { '30H': number; '31H': number; '32H': number };
+  ram: { '20H': number; '30H': number; '31H': number; '32H': number; '33H': number; '34H': number; '35H': number; '36H': number; '37H': number; '38H': number };
   port_trace: { step: number; value: number }[];
+  secondary_trace: { step: number; value: number }[];
+  tertiary_trace: { step: number; value: number }[];
 }
 
 const PORT_ADDRESS = { P0: '0x80', P1: '0x90', P2: '0xa0', P3: '0xb0' } as const;
@@ -44,10 +46,12 @@ export function parseIntelHex(hex: string): number {
   return count;
 }
 
-export async function runS51(hexPath: string, steps: number, keySteps: number[], clockHz: number, tracePort?: TracePort): Promise<string> {
+export async function runS51(hexPath: string, steps: number, keySteps: number[], clockHz: number, tracePort?: TracePort, secondaryPort?: TracePort, tertiaryPort?: TracePort, traceWindow?: number): Promise<string> {
   const commands: string[] = [];
+  const firstTraceStep = Math.max(0, steps - (traceWindow ?? steps));
+  const traceLength = steps - firstTraceStep;
   const checkpoints = tracePort && steps > 0
-    ? Array.from({ length: Math.min(64, steps) }, (_, index) => Math.ceil((index + 1) * steps / Math.min(64, steps)))
+    ? Array.from({ length: Math.min(64, traceLength) }, (_, index) => firstTraceStep + Math.ceil((index + 1) * traceLength / Math.min(64, traceLength)))
     : [];
   const events = [
     ...keySteps.map(step => ({ step, kind: 'key' as const })),
@@ -57,11 +61,15 @@ export async function runS51(hexPath: string, steps: number, keySteps: number[],
   for (const event of events) {
     if (event.step > previous) commands.push(`step ${event.step - previous}`);
     if (event.kind === 'key') commands.push('set memory sfr 0xb0 0xff', 'set memory sfr 0xb0 0xfb');
-    else if (tracePort) commands.push(`echo __VE_TRACE_${event.step}__`, `dump sfr ${PORT_ADDRESS[tracePort]} ${PORT_ADDRESS[tracePort]}`);
+    else if (tracePort) {
+      commands.push(`echo __VE_TRACE_${event.step}__`, `dump sfr ${PORT_ADDRESS[tracePort]} ${PORT_ADDRESS[tracePort]}`);
+      if (secondaryPort) commands.push(`echo __VE_SECOND_${event.step}__`, `dump sfr ${PORT_ADDRESS[secondaryPort]} ${PORT_ADDRESS[secondaryPort]}`);
+      if (tertiaryPort) commands.push(`echo __VE_THIRD_${event.step}__`, `dump sfr ${PORT_ADDRESS[tertiaryPort]} ${PORT_ADDRESS[tertiaryPort]}`);
+    }
     previous = event.step;
   }
   if (steps > previous) commands.push(`step ${steps - previous}`);
-  commands.push('echo __VE_STATE__', 'state', 'echo __VE_SFR__', 'dump sfr 0x80 0xf0', 'echo __VE_RAM__', 'dump iram 0x30 0x32', 'quit');
+  commands.push('echo __VE_STATE__', 'state', 'echo __VE_SFR__', 'dump sfr 0x80 0xf0', 'echo __VE_RAM__', 'dump iram 0x20 0x20', 'dump iram 0x30 0x38', 'quit');
   // A command file avoids stdin readiness interrupting long ucSim step runs.
   const commandPath = `${hexPath}.cmd`;
   await writeFile(commandPath, `${commands.join('\n')}\n`, 'ascii');
@@ -80,9 +88,9 @@ export async function runS51(hexPath: string, steps: number, keySteps: number[],
   });
 }
 
-export function parsePortTrace(output: string, port: TracePort): Native8051Result['port_trace'] {
+export function parsePortTrace(output: string, port: TracePort, marker: 'TRACE' | 'SECOND' | 'THIRD' = 'TRACE'): Native8051Result['port_trace'] {
   const address = PORT_ADDRESS[port].slice(2);
-  const pattern = new RegExp(`__VE_TRACE_(\\d+)__\\s*\\r?\\n0x${address}\\s+[^\\r\\n]*?0x([0-9a-f]{2})\\b`, 'gi');
+  const pattern = new RegExp(`__VE_${marker}_(\\d+)__\\s*\\r?\\n0x${address}\\s+[^\\r\\n]*?0x([0-9a-f]{2})\\b`, 'gi');
   return Array.from(output.matchAll(pattern), match => ({ step: Number(match[1]), value: parseInt(match[2], 16) }));
 }
 
@@ -98,19 +106,27 @@ export function parseS51(output: string): Pick<Native8051Result, 'pc' | 'machine
     if (!match) throw new Error(`仿真器未返回寄存器 ${address}`);
     return parseInt(match[1], 16);
   };
-  const ramMatch = /^\s*(?:\d+>\s*)?0x30\s+([0-9a-f]{2})\s+([0-9a-f]{2})\s+([0-9a-f]{2})\b/im.exec(iram);
-  if (!pc || !clocks || !seconds || !ramMatch) throw new Error('仿真器状态解析失败');
+  const ramLine = (address: string, count: number): number[] => {
+    const match = new RegExp(`^\\s*(?:\\d+>\\s*)?0x${address}\\s+((?:[0-9a-f]{2}\\s+){${count}})`, 'im').exec(iram);
+    if (!match) throw new Error(`仿真器未返回 RAM ${address}H`);
+    return match[1].trim().split(/\s+/).map(value => parseInt(value, 16));
+  };
+  if (!pc || !clocks || !seconds) throw new Error('仿真器状态解析失败');
+  const [ram20] = ramLine('20', 1);
+  const ram30 = ramLine('30', 8);
+  const [ram38] = ramLine('38', 1);
   return {
     pc: parseInt(pc[1], 16), machine_clocks: Number(clocks[1]), elapsed_seconds: Number(seconds[1]),
     registers: { A: sfrByte('e0'), SP: sfrByte('81'), P0: sfrByte('80'), P1: sfrByte('90'), P2: sfrByte('a0'), P3: sfrByte('b0'), TMOD: sfrByte('89'), TCON: sfrByte('88'), TH0: sfrByte('8c'), TL0: sfrByte('8a') },
-    ram: { '30H': parseInt(ramMatch[1], 16), '31H': parseInt(ramMatch[2], 16), '32H': parseInt(ramMatch[3], 16) },
+    ram: { '20H': ram20, '30H': ram30[0], '31H': ram30[1], '32H': ram30[2], '33H': ram30[3], '34H': ram30[4], '35H': ram30[5], '36H': ram30[6], '37H': ram30[7], '38H': ram38 },
   };
 }
 
-export async function compileAndSimulate(code: string, steps: number, keySteps: number[], clockHz: number, tracePort?: TracePort): Promise<Native8051Result> {
+export async function compileAndSimulate(code: string, steps: number, keySteps: number[], clockHz: number, tracePort?: TracePort, secondaryPort?: TracePort, tertiaryPort?: TracePort, traceWindow?: number): Promise<Native8051Result> {
   if (!Number.isInteger(steps) || steps < 0 || steps > MAX_NATIVE_STEPS) throw new Error(`运行条数须在 0—${MAX_NATIVE_STEPS} 之间`);
   if (!Number.isInteger(clockHz) || clockHz < 1_000_000 || clockHz > 24_000_000) throw new Error('晶振频率超出 1—24 MHz 范围');
   if (keySteps.length > 8 || keySteps.some(step => !Number.isInteger(step) || step < 0 || step > steps) || keySteps.some((step, index) => index > 0 && step <= keySteps[index - 1])) throw new Error('按键时序无效');
+  if (traceWindow !== undefined && (!Number.isInteger(traceWindow) || traceWindow < 1 || traceWindow > MAX_NATIVE_STEPS)) throw new Error('端口观察窗口无效');
   const source = normalizeAssembly(code);
   const directory = await mkdtemp(join(tmpdir(), 've-8051-'));
   const sourcePath = join(directory, 'program.asm');
@@ -123,9 +139,13 @@ export async function compileAndSimulate(code: string, steps: number, keySteps: 
     }
     const hex = await readFile(join(directory, 'program.hex'), 'utf8');
     const codeBytes = parseIntelHex(hex);
-    const output = await runS51(join(directory, 'program.hex'), steps, keySteps, clockHz, tracePort);
+    const output = await runS51(join(directory, 'program.hex'), steps, keySteps, clockHz, tracePort, secondaryPort, tertiaryPort, traceWindow);
     const portTrace = tracePort ? parsePortTrace(output, tracePort) : [];
+    const secondaryTrace = secondaryPort ? parsePortTrace(output, secondaryPort, 'SECOND') : [];
+    const tertiaryTrace = tertiaryPort ? parsePortTrace(output, tertiaryPort, 'THIRD') : [];
     if (tracePort && steps > 0 && !portTrace.length) throw new Error('端口采样失败，请缩短执行范围重试');
-    return { toolchain: 'AS31 + SDCC ucSim/s51', code_sha256: createHash('sha256').update(source).digest('hex'), hex, code_bytes: codeBytes, steps, clock_hz: clockHz, port_trace: portTrace, ...parseS51(output) };
+    if (secondaryPort && steps > 0 && secondaryTrace.length !== portTrace.length) throw new Error('双端口采样不完整，请重试');
+    if (tertiaryPort && steps > 0 && tertiaryTrace.length !== portTrace.length) throw new Error('三端口采样不完整，请重试');
+    return { toolchain: 'AS31 + SDCC ucSim/s51', code_sha256: createHash('sha256').update(source).digest('hex'), hex, code_bytes: codeBytes, steps, clock_hz: clockHz, port_trace: portTrace, secondary_trace: secondaryTrace, tertiary_trace: tertiaryTrace, ...parseS51(output) };
   } finally { await rm(directory, { recursive: true, force: true }); }
 }

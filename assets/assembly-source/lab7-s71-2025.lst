@@ -1,0 +1,136 @@
+A51 MACRO ASSEMBLER  S71                                                                  01/04/2025 10:11:46 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN .\Objects\S71.obj
+ASSEMBLER INVOKED BY: C:\Keil_v5\C51\BIN\A51.EXE S71.asm SET(SMALL) DEBUG PRINT(.\Listings\S71.lst) OBJECT(.\Objects\S71
+                      .obj) EP
+
+LOC  OBJ            LINE     SOURCE
+
+0000                   1     ORG 0000H
+0000 020040            2     LJMP MAIN
+000B                   3     ORG 000BH
+000B 020086            4     LJMP DVT0
+0040                   5     ORG 0040H
+0040                   6     MAIN:
+0040 758901            7             MOV TMOD,#01H   ;0000 0001
+0043 758CB1            8             MOV TH0,#0B1H    ;20ms*50
+0046 758AE0            9         MOV TL0,#0E0H
+0049 7B32             10             MOV R3,#50       ;50ci,20ms*50
+004B 753105           11             MOV 31H,#5       ;23-59-55       
+004E 753205           12             MOV 32H,#5
+0051 75330A           13             MOV 33H,#10
+0054 753409           14             MOV 34H,#9
+0057 753505           15             MOV 35H,#5
+005A 75360A           16             MOV 36H,#10
+005D 753703           17             MOV 37H,#3
+0060 753802           18             MOV 38H,#2
+0063 D2A9             19         SETB ET0      
+0065 D2AF             20         SETB EA       
+0067 D28C             21         SETB TR0
+0069                  22     LOOP:
+0069 7808             23             MOV R0,#8    ;v  23-59-59
+006B 7931             24             MOV R1,#31H
+006D 7A00             25             MOV     R2,#0
+006F                  26             LOOP1:
+                      27                             ;duan-5
+006F E7               28                             MOV     A,@R1
+0070 9000DE           29                             MOV     DPTR,#TAB1
+0073 93               30                             MOVC A,@A+DPTR
+0074 F580             31                             MOV     P0,A
+                      32                             
+                      33                             ;wei
+0076 EA               34                             MOV     A,R2
+0077 9000E9           35                             MOV     DPTR,#TAB2
+007A 93               36                             MOVC A,@A+DPTR   ;1111 1110
+007B F590             37                             MOV     P1,A
+                      38                             
+007D 09               39                             INC     R1
+007E 0A               40                 INC R2      
+007F 1200D5           41                         lcall DELAY                 
+0082 D8EB             42                             DJNZ R0,LOOP1
+0084 0169             43                             AJMP LOOP                       
+0086 DB46             44     DVT0:DJNZ R3,NT0    ;23-59-55 
+0088 7B32             45          MOV R3,#50
+008A 0531             46              INC 31H
+008C E531             47              MOV A,31H
+008E B40A3D           48              CJNE A,#0AH,NT0
+0091 753100           49              MOV 31H,#0
+0094 0532             50              INC 32H
+0096 E532             51              MOV A,32H
+0098 B40633           52              CJNE A,#06H,NT0
+009B 753200           53              MOV 32H,#0
+009E 0534             54              INC 34H
+00A0 E534             55              MOV A,34H
+00A2 B40A29           56              CJNE A,#0AH,NT0
+00A5 753400           57              MOV 34H,#0
+A51 MACRO ASSEMBLER  S71                                                                  01/04/2025 10:11:46 PAGE     2
+
+00A8 0535             58              INC 35H
+00AA E535             59              MOV A,35H
+00AC B4061F           60          CJNE A,#06H,NT0
+00AF 753500           61              MOV 35H,#0
+00B2 0537             62              INC 37H
+00B4 E537             63              MOV A,37H
+00B6 B4040B           64          CJNE A,#04H,DVT1
+00B9 E538             65              MOV A,38H 
+00BB B40206           66              CJNE A,#02H,DVT1
+00BE 753700           67          MOV 37H,#0
+00C1 753800           68              MOV 38H,#0
+00C4 B40A07           69     DVT1:CJNE A,#0AH,NT0
+00C7 753700           70              MOV 37H,#0
+00CA 0538             71              INC 38H
+00CC E538             72              MOV A,38H              
+00CE                  73             NT0:
+00CE 758CB1           74                     MOV TH0,#0B1H 
+00D1 758AE0           75                     MOV TL0,#0E0H 
+00D4 32               76                     RETI
+                      77                     
+00D5                  78     DELAY:
+00D5 7D04             79             MOV R5,#04H
+00D7                  80     DELAY1:
+00D7 7EFF             81             MOV R6,#0FFH
+00D9                  82     DELAY2:
+00D9 DEFE             83             DJNZ R6,DELAY2
+00DB DDFA             84             DJNZ R5,DELAY1
+00DD 22               85             RET
+00DE 3F065B4F         86     TAB1:DB 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7D,0x07,0x7F,0x6F,0x40
+00E2 666D7D07                
+00E6 7F6F40                  
+00E9 FEFDFBF7         87     TAB2:DB 0xfe,0xfd,0xfb,0xf7,0xef,0xdf,0xbf,0x7f
+00ED EFDFBF7F                
+                      88     END
+A51 MACRO ASSEMBLER  S71                                                                  01/04/2025 10:11:46 PAGE     3
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+DELAY. . . . . . .  C ADDR   00D5H   A   
+DELAY1 . . . . . .  C ADDR   00D7H   A   
+DELAY2 . . . . . .  C ADDR   00D9H   A   
+DVT0 . . . . . . .  C ADDR   0086H   A   
+DVT1 . . . . . . .  C ADDR   00C4H   A   
+EA . . . . . . . .  B ADDR   00A8H.7 A   
+ET0. . . . . . . .  B ADDR   00A8H.1 A   
+LOOP . . . . . . .  C ADDR   0069H   A   
+LOOP1. . . . . . .  C ADDR   006FH   A   
+MAIN . . . . . . .  C ADDR   0040H   A   
+NT0. . . . . . . .  C ADDR   00CEH   A   
+P0 . . . . . . . .  D ADDR   0080H   A   
+P1 . . . . . . . .  D ADDR   0090H   A   
+TAB1 . . . . . . .  C ADDR   00DEH   A   
+TAB2 . . . . . . .  C ADDR   00E9H   A   
+TH0. . . . . . . .  D ADDR   008CH   A   
+TL0. . . . . . . .  D ADDR   008AH   A   
+TMOD . . . . . . .  D ADDR   0089H   A   
+TR0. . . . . . . .  B ADDR   0088H.4 A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)
