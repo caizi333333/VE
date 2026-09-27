@@ -1766,3 +1766,11 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-phase { margin-top: 14px; border-top: 1px solid #b7d2bd; padding-top: 12px; }
 .assembly-phase p { overflow-wrap: anywhere; color: #163f2c; font-weight: 750; }
 .assembly-phase small { color: #526457; font-size: 12px; line-height: 1.5; }
+.assembly-guide, .assembly-help-evidence { margin: 14px 0; padding: 14px 16px; border: 1px solid #b7d2bd; border-radius: 10px; background: #edf5ee; line-height: 1.6; }
+.assembly-guide p, .assembly-help-evidence p { margin: 6px 0; }
+.assembly-guide small, .assembly-evidence-actions small { display: block; color: #526457; font-size: 14px; }
+.assembly-evidence-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.assembly-evidence-actions small { flex-basis: 100%; line-height: 1.6; }
+.assembly-help-evidence pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+.assembly-clock { flex-wrap: wrap; }
+.assembly-clock select { min-width: 0; max-width: 100%; }

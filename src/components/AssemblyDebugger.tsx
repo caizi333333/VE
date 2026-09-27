@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { assemblyLab, normalizeAssembly } from "@/lib/assembly-labs";
 import { api, errorText } from "@/components/client-api";
 import type { Native8051Result } from "@/lib/native-8051";
+import { assemblyEvidenceFile, assemblyQuickStart, isCurrentAssemblyRun, type AssemblyRun } from "@/lib/assembly-workflow";
 
 const MAX_STEPS = 2_000_000;
 const hex = (value: number) => `${(value & 255).toString(16).toUpperCase().padStart(2, "0")}H`;
@@ -21,7 +22,7 @@ function sampledDigits(result: Native8051Result): (string | null)[] {
   return digits;
 }
 
-export default function AssemblyDebugger({ labId }: { labId: number }) {
+export default function AssemblyDebugger({ labId, onAskTeacher }: { labId: number; onAskTeacher?: (run: AssemblyRun) => void }) {
   const lab = assemblyLab(labId);
   const [code, setCode] = useState(lab?.variants?.find(item => item.id === defaultPreset(labId))?.code ?? lab?.code ?? "");
   const [result, setResult] = useState<Native8051Result | null>(null);
@@ -31,6 +32,8 @@ export default function AssemblyDebugger({ labId }: { labId: number }) {
   const [clockHz, setClockHz] = useState(12_000_000);
   const [traceWindow, setTraceWindow] = useState(defaultTraceWindow(labId));
   const [presetId, setPresetId] = useState(defaultPreset(labId));
+  const [snapshot, setSnapshot] = useState<AssemblyRun | null>(null);
+  const [pendingKey, setPendingKey] = useState(false);
   const keySteps = useRef<number[]>([]);
   const loadedCode = useRef("");
 
@@ -38,6 +41,7 @@ export default function AssemblyDebugger({ labId }: { labId: number }) {
     const initialPreset = defaultPreset(lab?.id ?? 0);
     setCode(lab?.variants?.find(item => item.id === initialPreset)?.code ?? lab?.code ?? ""); setResult(null); setSteps(0); setMessage(""); setPresetId(initialPreset); setTraceWindow(defaultTraceWindow(lab?.id ?? 0));
     keySteps.current = []; loadedCode.current = "";
+    setSnapshot(null); setPendingKey(false);
   }, [lab?.id, lab?.code, lab?.variants]);
   if (!lab) return null;
   const preset = lab.variants?.find(item => item.id === presetId);
@@ -45,17 +49,24 @@ export default function AssemblyDebugger({ labId }: { labId: number }) {
   const secondaryPort = tracePort === 'P0' && (labId === 5 || presetId === 'clock-2025') ? 'P1' : undefined;
   const displayPort = tracePort === 'P0' && presetId === 'clock-alarm' ? 'P1' : secondaryPort;
   const tertiaryPort = presetId === 'clock-alarm' ? 'P2' : undefined;
+  const quickStart = assemblyQuickStart(labId, presetId);
+  const capture = (next: Native8051Result, keys: number[]) => {
+    setSnapshot({ labId, presetId, presetTitle: preset?.title ?? lab.title, code, clockHz,
+      keySteps: [...keys], traceWindow, tracePort, secondaryPort: displayPort, tertiaryPort,
+      capturedAt: new Date().toISOString(), result: next });
+    setPendingKey(false);
+  };
 
   const verify = (count: number, keys: number[]) => api<Native8051Result>("/api/assembly", {
     lab_id: labId, code, steps: count, key_steps: keys, clock_hz: clockHz, trace_port: tracePort, secondary_port: displayPort, tertiary_port: tertiaryPort, trace_window: traceWindow || undefined,
   });
   const reset = async () => {
     try { normalizeAssembly(code); } catch (cause) { setMessage(errorText(cause)); return; }
-    setBusy(true); setMessage("");
+    setBusy(true); setMessage(""); setResult(null); setSnapshot(null); setPendingKey(false); loadedCode.current = "";
     try {
       const next = await verify(0, []);
       loadedCode.current = code; keySteps.current = [];
-      setResult(next); setSteps(0);
+      setResult(next); setSteps(0); capture(next, []);
     } catch (cause) { setMessage(errorText(cause)); }
     finally { setBusy(false); }
   };
@@ -65,7 +76,7 @@ export default function AssemblyDebugger({ labId }: { labId: number }) {
     setBusy(true); setMessage("");
     try {
       const next = await verify(steps + count, keySteps.current);
-      setResult(next); setSteps(steps + count);
+      setResult(next); setSteps(steps + count); capture(next, keySteps.current);
     } catch (cause) { setMessage(errorText(cause)); }
     finally { setBusy(false); }
   };
@@ -75,15 +86,17 @@ export default function AssemblyDebugger({ labId }: { labId: number }) {
     if (keySteps.current.length >= 8) { setMessage("一次调试最多记录 8 次按键，请重新加载程序。"); return; }
     if (keySteps.current.at(-1) === steps) { setMessage("请先运行几条指令，再记录下一次按键。"); return; }
     keySteps.current.push(steps);
+    setPendingKey(true);
     setMessage("已记录 P3.2 按键；继续运行后读取 INT0 结果。");
   };
-  const downloadHex = () => {
-    if (!result) return;
-    const url = URL.createObjectURL(new Blob([result.hex], { type: "text/plain" }));
-    const link = document.createElement("a"); link.href = url; link.download = `lab${labId}-8051.hex`; link.click();
+  const download = (content: string, extension: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type: extension === 'json' ? 'application/json' : 'text/plain;charset=utf-8' }));
+    const link = document.createElement("a"); link.href = url; link.download = `lab${labId}-8051.${extension}`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const loaded = !!result && loadedCode.current === code;
+  const loaded = isCurrentAssemblyRun(snapshot, code, clockHz, presetId);
+  const canUseEvidence = loaded && !busy && !pendingKey;
+  const recommendedSteps = pendingKey ? 25 : quickStart.steps;
   const observedPort = tracePort ? result?.registers[tracePort] : undefined;
 
   return <details className="assembly-debugger">
@@ -91,25 +104,31 @@ export default function AssemblyDebugger({ labId }: { labId: number }) {
     <div className="assembly-body">
       <p>{lab.purpose}</p>
       <p className="assembly-source">资料口径：{preset?.source ?? lab.source}。历史代码用于对照和调试；程序编译通过不等于本班实物验证通过。</p>
-      {lab.variants && <label className="assembly-clock">程序版本<select value={presetId} disabled={busy} onChange={event => { const id = event.target.value; setPresetId(id); setCode(lab.variants?.find(item => item.id === id)?.code ?? lab.code); setResult(null); setSteps(0); setMessage(""); keySteps.current = []; loadedCode.current = ""; }}><option value="basic">局部基础练习</option>{lab.variants.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
+      <div className="assembly-guide"><strong>动手顺序：编译加载 → 运行观察 → 记录与求助</strong><p>{quickStart.instruction}</p><small>以上是原示例的操作提示；修改源码或晶振后，应按实际程序重新判断。</small></div>
+      {lab.variants && <label className="assembly-clock">程序版本<select value={presetId} disabled={busy} onChange={event => { const id = event.target.value; if (code !== (preset?.code ?? lab.code) && !window.confirm('切换版本将替换当前修改的代码。请先下载源码保存。仍要切换吗？')) return; setPresetId(id); setCode(lab.variants?.find(item => item.id === id)?.code ?? lab.code); setResult(null); setSnapshot(null); setPendingKey(false); setSteps(0); setMessage(""); keySteps.current = []; loadedCode.current = ""; }}><option value="basic">局部基础练习</option>{lab.variants.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
       <div className="assembly-layout">
         <div className="assembly-editor">
           <label htmlFor={`assembly-code-${labId}`}>8051 汇编代码</label>
           <textarea id={`assembly-code-${labId}`} value={code} disabled={busy} onChange={event => { setCode(event.target.value); setMessage(""); }} spellCheck={false} rows={Math.min(18, Math.max(10, code.split(/\r?\n/).length + 1))} aria-describedby={`assembly-limit-${labId}`} />
-          <small id={`assembly-limit-${labId}`}>修改代码后重新编译。支持本页示例使用的 8051 指令子集；编译成功可下载 Intel HEX。</small>
+          <small id={`assembly-limit-${labId}`}>修改代码后重新编译。支持本页示例使用的 8051 指令子集；离开实验前请下载源码保存。</small>
+          <button className="btn quiet" type="button" disabled={busy || !code.trim()} onClick={() => download(code, 'asm')}>下载当前源码</button>
         </div>
         <div className="assembly-panel">
           <div className="assembly-actions">
             <button className="btn primary" type="button" disabled={busy} onClick={() => void reset()}>{busy ? "正在执行…" : "编译并加载"}</button>
+            <button className="btn" type="button" disabled={!loaded || busy || steps + recommendedSteps > MAX_STEPS} onClick={() => void run(recommendedSteps)}>{pendingKey ? '执行按键后 25 条' : `按提示推进 ${recommendedSteps.toLocaleString()} 条`}</button>
             {[1, 500, 5_000, 50_000, 500_000].map(count => <button className="btn" type="button" key={count} disabled={!loaded || busy || steps + count > MAX_STEPS} onClick={() => void run(count)}>+{count.toLocaleString()} 条</button>)}
             {lab.key && <button className="btn quiet" type="button" disabled={!loaded || busy} onClick={press}>{lab.key.label}</button>}
           </div>
-          <label className="assembly-clock">晶振条件<select value={clockHz} disabled={busy} onChange={event => { setClockHz(Number(event.target.value)); setResult(null); setSteps(0); keySteps.current = []; loadedCode.current = ""; }}><option value={12_000_000}>12 MHz（报告）</option><option value={11_059_200}>11.0592 MHz（对照）</option></select></label>
+          <label className="assembly-clock">晶振条件<select value={clockHz} disabled={busy} onChange={event => { setClockHz(Number(event.target.value)); setResult(null); setSnapshot(null); setPendingKey(false); setSteps(0); keySteps.current = []; loadedCode.current = ""; }}><option value={12_000_000}>12 MHz（报告）</option><option value={11_059_200}>11.0592 MHz（对照）</option></select></label>
           {tracePort && <label className="assembly-clock">下一次运行的采样范围<select value={traceWindow} disabled={busy} onChange={event => setTraceWindow(Number(event.target.value))}><option value={0}>从加载到当前</option><option value={500}>最近 500 条</option><option value={5_000}>最近 5,000 条</option><option value={50_000}>最近 50,000 条</option></select></label>}
           {message && <p className={message.startsWith("已记录") ? "notice" : "notice error"} role="alert">{message}</p>}
+          {result && !loaded && <p className="notice error" role="status">代码已修改，下方是上一版程序的结果。请重新编译；旧结果暂不能下载或带入求助。</p>}
+          {pendingKey && <p className="notice" role="status">按键尚未执行到结果中。请继续运行，再下载记录或带入求助。</p>}
           {result ? <div className="assembly-native" role="status">
-            <div><strong>AS31 编译 · s51 执行结果</strong><button className="btn quiet" type="button" onClick={downloadHex}>下载 HEX</button></div>
+            <div><strong>AS31 编译 · s51 执行结果{!loaded ? '（上一版）' : ''}</strong><button className="btn quiet" type="button" disabled={!canUseEvidence} onClick={() => download(result.hex, 'hex')}>下载 HEX</button></div>
             <p>{result.code_bytes} 字节机器码 · 已执行 {steps.toLocaleString()} 条 · 模拟时间 {(result.elapsed_seconds * 1000).toFixed(3)} ms</p>
+            {snapshot && <p>本次结果：{result.clock_hz.toLocaleString()} Hz · 采样范围 {snapshot.traceWindow ? `最近 ${snapshot.traceWindow.toLocaleString()} 条` : '从加载到当前'}。更改上方采样范围后，下次运行才生效。</p>}
             <p>PC {result.pc.toString(16).toUpperCase().padStart(4, "0")}H · A {hex(result.registers.A)} · SP {hex(result.registers.SP)}</p>
             <div className="assembly-registers">{(["P0", "P1", "P2", "P3", "TMOD", "TCON", "TH0", "TL0"] as const).map(name => <div key={name}><span>{name}</span><strong>{hex(result.registers[name])}</strong></div>)}</div>
             {steps > 0 && (labId === 1 || labId === 4 || labId === 7 && presetId === 'basic') && <p>RAM 30H / 31H / 32H：{hex(result.ram["30H"])} / {hex(result.ram["31H"])} / {hex(result.ram["32H"])}</p>}
@@ -121,6 +140,7 @@ export default function AssemblyDebugger({ labId }: { labId: number }) {
             {displayPort && result.secondary_trace.length > 0 && <div className="assembly-display"><strong>P0 段码 × P1 位选采样</strong><div>{(labId === 7 ? [...sampledDigits(result)].reverse() : sampledDigits(result)).map((digit, index) => <span key={index}><small>P1.{labId === 7 ? 7 - index : index}</small><b>{digit ?? '·'}</b></span>)}</div><p>按备课代码中的共阴段码及 P1 低有效位选解码；“·”表示本次采样未捕捉该位。时钟按原程序的高位到低位显示，板上实际左右方向仍须核对。</p></div>}
             {tertiaryPort && result.tertiary_trace.length > 0 && <div className="assembly-trace"><strong>P2.0 分钟报警控制信号</strong><div className="assembly-trace-bars" role="img" aria-label="P2.0 蜂鸣器控制脚采样电平">{result.tertiary_trace.map(point => <span key={point.step} className={point.value & 1 ? "high" : "low"} title={`第 ${point.step.toLocaleString()} 条：${hex(point.value)}`} />)}</div><p>报警时两种电平交替；该图不等于可听音频或蜂鸣器实物测试。</p></div>}
           </div> : <p className="assembly-empty">先编译加载，再按指令数推进；观察值来自生成的 HEX 在 s51 中执行的状态。</p>}
+          {snapshot && <div className="assembly-evidence-actions"><button className="btn" type="button" disabled={!canUseEvidence} onClick={() => download(assemblyEvidenceFile(snapshot), 'json')}>下载调试记录</button>{onAskTeacher && <button className="btn primary" type="button" disabled={!canUseEvidence} onClick={() => onAskTeacher(snapshot)}>带入代码与记录，向教师求助</button>}<small>记录包含本次源码、晶振、按键、寄存器及采样值。带入后还需填写实际问题，由你提交。</small></div>}
         </div>
       </div>
       <p className="assembly-boundary">{lab.observation} 此处读数对应经典 12T 8051 指令仿真；端口电平不等于板上器件已正常工作。电机、蜂鸣器、数码管和接线须按本班器材验证。</p>

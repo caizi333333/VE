@@ -11,6 +11,7 @@ import { redactSubmission } from "@/lib/redact";
 import { REDACTION_RULE_LABELS } from "@/lib/api-types";
 import { LAB_GUIDES, LAB_PPT_NOTES, LAB_REPORT_TITLES, labGuide } from "@/lib/lab-guides";
 import AssemblyDebugger from "@/components/AssemblyDebugger";
+import { prepareAssemblyHelp, type AssemblyRun } from "@/lib/assembly-workflow";
 import { coursewareForLab } from "@/lib/courseware";
 import type {
   SessionView,
@@ -41,6 +42,7 @@ export default function StudentPage() {
   const [recovery, setRecovery] = useState("");
   const [symptom, setSymptom] = useState("");
   const [code, setCode] = useState("");
+  const [assemblyEvidence, setAssemblyEvidence] = useState("");
   const [bench, setBench] = useState("");
   const [ticket, setTicket] = useState<TicketView | null>(null);
   const [lookup, setLookup] = useState("");
@@ -57,6 +59,7 @@ export default function StudentPage() {
     setIssueType(null);
     setSymptom("");
     setCode("");
+    setAssemblyEvidence("");
     setRequestKey("");
     const url = new URL(window.location.href);
     url.searchParams.set("lab", String(id));
@@ -69,9 +72,11 @@ export default function StudentPage() {
     { id: "result" as const, label: "结果与预期不符", checks: guide.resultChecks },
   ] : [];
   const selectedIssue = issueOptions.find((item) => item.id === issueType);
+  const observation = [symptom.trim(), assemblyEvidence].filter(Boolean).join('\n\n');
+  const submittedSymptom = guide && selectedIssue ? `实验${guide.id}｜${selectedIssue.label}：${observation}` : observation;
   const identityHits = useMemo(
-    () => redactSubmission(symptom, code).hits,
-    [symptom, code],
+    () => redactSubmission([symptom, assemblyEvidence].filter(Boolean).join('\n\n'), code).hits,
+    [symptom, assemblyEvidence, code],
   );
   const experiment = experiments.find((e) => e.id === experimentId);
   useEffect(() => {
@@ -226,6 +231,7 @@ export default function StudentPage() {
       setSession(null);
       setTicket(null);
       setExperiments([]);
+      setSymptom(""); setCode(""); setAssemblyEvidence(""); setRequestKey("");
       window.history.replaceState(null, "", "/");
     } catch (e) {
       setError(errorText(e));
@@ -236,9 +242,8 @@ export default function StudentPage() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!guide && !experiment) return;
-    const submittedSymptom = guide && selectedIssue ? `实验${guide.id}｜${selectedIssue.label}：${symptom.trim()}` : symptom.trim();
     if (submittedSymptom.length > 2000) {
-      setError("现象描述过长，请精简后再提交。");
+      setError("现象与调试记录合计超过 2,000 字符，请精简现象或移除调试记录后再提交。");
       return;
     }
     if (identityHits.length) {
@@ -266,6 +271,7 @@ export default function StudentPage() {
         setRequestKey("");
         setSymptom("");
         setCode("");
+        setAssemblyEvidence("");
       } else {
         setError(
           `诊疗 ${result.ticket} 已受理，读取暂未成功。原填写内容和提交标识已保留，可重试提交或在下方按单号查看。`,
@@ -284,6 +290,7 @@ export default function StudentPage() {
     setRequestKey("");
     setSymptom("");
     setCode("");
+    setAssemblyEvidence("");
     setError("");
     window.history.replaceState(null, "", "/");
   };
@@ -293,9 +300,22 @@ export default function StudentPage() {
     setIssueType(null);
     setSymptom(ticket.symptom_text ?? "");
     setCode(ticket.code_text ?? "");
+    setAssemblyEvidence("");
     if (ticket.experiment_id) setExperimentId(ticket.experiment_id);
     if (ticket.lab_id) setLabId(ticket.lab_id);
     setRequestKey("");
+  };
+  const askWithAssembly = (run: AssemblyRun) => {
+    if (run.labId !== labId) return;
+    try {
+      const prepared = prepareAssemblyHelp(run, symptom);
+      if (code.trim() && code !== prepared.code && !window.confirm('求助表单已有不同的代码。要用本次调试源码替换吗？现象描述会保留。')) return;
+      setCode(prepared.code); setAssemblyEvidence(prepared.evidence); setRequestKey(""); setError("");
+      window.requestAnimationFrame(() => {
+        document.getElementById('ask-teacher')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        document.getElementById('student-observation')?.focus({ preventScroll: true });
+      });
+    } catch (cause) { setError(errorText(cause)); }
   };
   if (!ready)
     return (
@@ -400,11 +420,11 @@ export default function StudentPage() {
           <div className="lab-after-steps"><div><strong>遇到问题？</strong><p>先按上面的顺序检查，再写下实际现象；教师复核后给出针对本实验的指导。</p></div><a className="btn primary" href="#ask-teacher">向教师求助</a></div>
           <details className="lab-guide-more"><summary>查看本实验应保留的材料与板卡参考照片</summary><div><p><strong>资料准备：</strong>{guide.evidence}</p><a href={`/api/lab-help?lab=${guide.id}`} className="btn quiet">下载本实验核对单</a><figure className="board-reference"><a href="/prechin6-board-reference.jpg" target="_blank" rel="noopener noreferrer"><Image src="/prechin6-board-reference.jpg" alt="普中-6 V1.2 手册中的开发板各功能模块照片" width={1227} height={894} /></a><figcaption>厂家手册第 3.1 节开发板功能示意照片；仅供辨认模块，不代表本班实际板型、接线或实验结果。</figcaption></figure></div></details>
           {coursewareForLab(guide.id).length > 0 && <div className="lab-courseware"><div><span className="eyebrow">可选 / 配套原理课件</span><h3>需要理解原理时再打开</h3></div><div>{coursewareForLab(guide.id).map(item => <Link key={item.slug} href={`/courseware/${item.slug}`}>{item.title}<span aria-hidden="true">↗</span></Link>)}</div></div>}
-          <AssemblyDebugger labId={guide.id} />
+          <AssemblyDebugger labId={guide.id} onAskTeacher={askWithAssembly} />
           <MaterialLibrary classroomId={session.learner.classroom_id} labId={guide.id} />
           <div className="lab-sequence-footer"><span>实验顺序 {guide.id} / 8 · 切换只用于查看，不表示实验完成</span><div>{guide.id > 1 && <button type="button" className="btn quiet" onClick={() => selectLab(guide.id - 1)}>← 上一个实验</button>}{guide.id < 8 && <button type="button" className="btn" onClick={() => selectLab(guide.id + 1)}>查看下一个实验 →</button>}</div></div>
         </article>}
-        <details className="specialty-entry"><summary>教师另行开放的故障专项诊疗</summary><button className="btn quiet" type="button" onClick={() => { setLabId(0); setIssueType(null); setSymptom(""); setCode(""); setRequestKey(""); document.getElementById("ask-teacher")?.scrollIntoView({ behavior: "smooth" }); }}>进入中断、串口或定时专项诊疗</button></details>
+        <details className="specialty-entry"><summary>教师另行开放的故障专项诊疗</summary><button className="btn quiet" type="button" onClick={() => { setLabId(0); setIssueType(null); setSymptom(""); setCode(""); setAssemblyEvidence(""); setRequestKey(""); document.getElementById("ask-teacher")?.scrollIntoView({ behavior: "smooth" }); }}>进入中断、串口或定时专项诊疗</button></details>
       </section>}
       <div className={`student-grid ${!ticket || ticket.lab_id ? "solo" : ""}`}>
         <div className="stack">
@@ -487,6 +507,7 @@ export default function StudentPage() {
                   <label>
                     实际观察到的情况 <span className="field-optional">必填</span>
                     <textarea
+                      id="student-observation"
                       value={symptom}
                       disabled={busy}
                       onChange={(e) => {
@@ -500,6 +521,7 @@ export default function StudentPage() {
                       maxLength={2000}
                     />
                   </label>
+                  {assemblyEvidence && <section className="assembly-help-evidence" aria-label="待提交的虚拟调试记录"><strong>已带入本次代码与虚拟调试记录</strong><p>请在上方写出哪里与预期不符。下列内容随求助提交给教师，尚未构成验证结论。</p><p role="status">现象与记录合计 {submittedSymptom.length} / 2,000 字符{submittedSymptom.length > 2000 ? '，请精简现象或移除记录。' : '。'}</p><details><summary>核对运行条件与读数</summary><pre>{assemblyEvidence}</pre></details><button className="btn quiet" type="button" disabled={busy} onClick={() => { setAssemblyEvidence(""); setRequestKey(""); }}>移除调试记录</button></section>}
                   {voiceSupported && <div className="voice-controls">
                     <button type="button" className="btn voice-button" onClick={toggleVoice} disabled={busy} aria-pressed={listening}>
                       {listening ? "停止语音输入" : "说出现象"}
@@ -516,6 +538,7 @@ export default function StudentPage() {
                       disabled={busy}
                       onChange={(e) => {
                         setCode(e.target.value);
+                        setAssemblyEvidence("");
                         setRequestKey("");
                       }}
                       rows={10}
@@ -523,6 +546,7 @@ export default function StudentPage() {
                       placeholder="粘贴相关初始化、主程序或中断处理代码；保留排查所需的上下文。"
                       maxLength={8000}
                     />
+                    <small>修改求助代码会移除已带入的调试记录；重新运行后可再次带入，保持代码与读数一致。</small>
                     </label>
                   </details>
                   <p className="compose-privacy">请勿填写姓名、学号或联系方式。教师审核后才会显示指导。</p>
@@ -542,7 +566,7 @@ export default function StudentPage() {
                     <button
                       className="btn primary"
                       disabled={
-                        busy || symptom.trim().length < 6 || identityHits.length > 0
+                        busy || symptom.trim().length < 6 || identityHits.length > 0 || submittedSymptom.length > 2000
                       }
                     >
                       {busy

@@ -8,6 +8,8 @@
 
 配套材料： [平台使用说明](docs/platform-user-guide.md) · [项目要求与证据对照表](docs/project-deliverables-map.md) · [提示词与模型约束说明](docs/prompt-specification.md) · [课堂试用验证记录](docs/pilot-validation.md)
 
+本轮实操改进及验收步骤见 [调试到求助的操作闭环](docs/practical-workflow.md)：各实验提供起步运行提示，调试源码与结果可下载，并可一起带入教师求助表单。修改程序后会标明旧结果并暂停其导出；所有记录仍需教师复核。
+
 需要 Node.js 22 或更高版本，并安装 SQLite 命令行工具。依赖版本固定在 `package-lock.json`，按锁文件安装。
 
 ```bash
