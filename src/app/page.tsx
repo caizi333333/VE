@@ -12,6 +12,7 @@ import { REDACTION_RULE_LABELS } from "@/lib/api-types";
 import { LAB_GUIDES, LAB_PPT_NOTES, LAB_REPORT_TITLES, labGuide } from "@/lib/lab-guides";
 import AssemblyDebugger from "@/components/AssemblyDebugger";
 import { prepareAssemblyHelp, type AssemblyRun } from "@/lib/assembly-workflow";
+import { clearLabDrafts, readLabDraft, readLastLab, saveLastLab } from "@/lib/lab-drafts";
 import { coursewareForLab } from "@/lib/courseware";
 import type {
   SessionView,
@@ -34,6 +35,9 @@ export default function StudentPage() {
   const [experiments, setExperiments] = useState<ExperimentView[]>([]);
   const [experimentId, setExperimentId] = useState("");
   const [labId, setLabId] = useState(1);
+  const [benchOpen, setBenchOpen] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [restoredScope, setRestoredScope] = useState("");
   const [issueType, setIssueType] = useState<"wiring" | "code" | "result" | null>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [listening, setListening] = useState(false);
@@ -46,6 +50,7 @@ export default function StudentPage() {
   const [bench, setBench] = useState("");
   const [ticket, setTicket] = useState<TicketView | null>(null);
   const [lookup, setLookup] = useState("");
+  const [lastTicket, setLastTicket] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(false);
@@ -53,9 +58,34 @@ export default function StudentPage() {
   const recognition = useRef<{ start: () => void; stop: () => void } | null>(null);
   const labNav = useRef<HTMLDivElement | null>(null);
   const guide = labGuide(labId);
+  const learnerScope = session?.learner ? `${session.learner.classroom_id}:${session.learner.id}` : "";
+  useEffect(() => {
+    if (!ready || !learnerScope || restoredScope === learnerScope) return;
+    const params = new URLSearchParams(window.location.search);
+    try {
+      const previous = readLastLab(window.localStorage, learnerScope);
+      if (!params.has("t") && !labGuide(Number(params.get("lab"))) && previous) setLabId(previous);
+    } catch { /* The editor offers a source download when browser storage is unavailable. */ }
+    setRestoredScope(learnerScope);
+  }, [ready, learnerScope, restoredScope]);
+  useEffect(() => {
+    if (!learnerScope || restoredScope !== learnerScope || !guide || ticket) return;
+    try {
+      setHasDraft(!!readLabDraft(window.localStorage, learnerScope, labId));
+      saveLastLab(window.localStorage, learnerScope, labId);
+    } catch { setHasDraft(false); }
+  }, [learnerScope, restoredScope, labId, guide, ticket]);
+  const openBench = () => {
+    setBenchOpen(true);
+    window.requestAnimationFrame(() => {
+      document.getElementById("lab-workbench")?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      document.getElementById("run-program")?.focus({ preventScroll: true });
+    });
+  };
   const selectLab = (id: number) => {
     if (!labGuide(id)) return;
     setLabId(id);
+    setBenchOpen(false);
     setIssueType(null);
     setSymptom("");
     setCode("");
@@ -145,6 +175,7 @@ export default function StudentPage() {
       if (value.lab_id) setLabId(value.lab_id);
       if (value.experiment_id) setExperimentId(value.experiment_id);
       setLookup(value.ticket);
+      setLastTicket(value.ticket);
       setRevision(false);
       setIssueType(null);
       const url = new URL(window.location.href);
@@ -228,9 +259,12 @@ export default function StudentPage() {
     setBusy(true);
     try {
       await api("/api/session", { action: "logout" });
+      try { clearLabDrafts(window.localStorage, learnerScope); }
+      catch { setError("已退出课堂，但未能清除浏览器草稿。共用电脑请清除此站点的浏览器数据。"); }
       setSession(null);
       setTicket(null);
       setExperiments([]);
+      setRestoredScope(""); setBenchOpen(false); setHasDraft(false); setLookup(""); setLastTicket(""); setLabId(1);
       setSymptom(""); setCode(""); setAssemblyEvidence(""); setRequestKey("");
       window.history.replaceState(null, "", "/");
     } catch (e) {
@@ -384,15 +418,16 @@ export default function StudentPage() {
       <div className="page-head student-page-head">
         <div>
           <span className="eyebrow">实验学习工作区 / STUDENT LAB</span>
-          <h1>{!ticket ? "八个实验指导" : ticket.status === "released" ? "按教师指导检查" : "已收到你的实验问题"}</h1>
+          <h1>{!ticket ? "我的实验台" : ticket.status === "released" ? "按教师指导检查" : "已收到你的实验问题"}</h1>
           <p className="muted">{session.learner.classroom_name} <span aria-hidden="true">·</span> 匿名编号 {session.learner.number}</p>
         </div>
         <div className="page-head-actions">
           {ticket && (
             <button className="btn" onClick={startNew}>
-              新建诊疗
+              返回实验
             </button>
           )}
+          {!ticket && lastTicket && <button className="btn" onClick={() => void loadTicket(lastTicket)}>查看上次求助</button>}
           <button className="btn quiet" onClick={logout} disabled={busy}>
             退出课堂
           </button>
@@ -405,22 +440,25 @@ export default function StudentPage() {
         </p>
       )}
       {!ticket && !revision && <section className="student-guide-workspace" aria-label="八个实验指导">
-        <div className="guide-intro"><div><span className="eyebrow">实验学习路线 / 1—8</span><h2>按实验报告顺序学习</h2><p>每个实验依次看课程知识、完成任务、核对结果；需要时再向教师求助。</p></div><span className="guide-source">8 项原报告实验<span className="guide-swipe-hint"> · 左右滑动切换</span></span></div>
+        <div className="guide-intro"><div><span className="eyebrow">实验学习路线 / 1—8</span><h2>选择本节课的实验，开始动手</h2><p>运行示例 → 修改代码、观察变化 → 带着问题向教师求助。实验顺序以任课教师安排为准。</p></div><span className="guide-source">8 项原报告实验<span className="guide-swipe-hint"> · 左右滑动切换</span></span></div>
         <div className="lab-nav" ref={labNav} role="group" aria-label="八个实验的报告顺序，切换不代表完成">
           {LAB_GUIDES.map(lab => <button key={lab.id} data-lab-id={lab.id} type="button" className={`lab-nav-item ${labId === lab.id ? "active" : ""}`} aria-pressed={labId === lab.id} onClick={() => selectLab(lab.id)}><span>{String(lab.id).padStart(2, "0")}</span><strong>{lab.title}</strong></button>)}
         </div>
         {guide && <article className="lab-overview" id="lab-guide" key={guide.id}>
-          <div className="lab-overview-main"><div className="lab-overview-copy"><span className="eyebrow">第 {guide.id} / 8 个实验 · 按报告顺序</span><h2>{LAB_REPORT_TITLES[guide.id]}</h2><p className="lab-goal"><strong>本次目标：</strong>{guide.goal}</p><p className="lab-curriculum"><strong>对应课程：</strong>{guide.ppt}</p><p className="lab-assignment"><strong>报告任务：</strong>{guide.task}</p><div className="lab-overview-actions"><a className="btn primary" href="#lab-steps">查看本实验过程</a><a className="btn quiet" href="/api/materials/original">下载原始八实验报告</a></div></div><LabVisual labId={guide.id} /></div>
-          <div className="lab-guide-columns" id="lab-steps">
+          <div className="lab-overview-main"><div className="lab-overview-copy"><span className="eyebrow">第 {guide.id} / 8 个实验</span><h2>{LAB_REPORT_TITLES[guide.id]}</h2><p className="lab-goal"><strong>本次目标：</strong>{guide.goal}</p><p className="lab-assignment"><strong>报告任务：</strong>{guide.task}</p><div className="lab-overview-actions"><button className="btn primary" type="button" onClick={openBench}>{hasDraft || benchOpen ? "继续实验" : "开始实验"}</button><a className="btn quiet" href="#lab-steps" onClick={() => { const details = document.getElementById("lab-steps") as HTMLDetailsElement | null; if (details) details.open = true; }}>实物接线与准备</a><a className="btn quiet" href="#ask-teacher">向教师求助</a></div><p className="muted">可先运行虚拟示例。操作实物前，请按下方实验准备核对本班器材与接线。</p></div><LabVisual labId={guide.id} /></div>
+          <AssemblyDebugger key={`${learnerScope}:${guide.id}`} labId={guide.id} learnerScope={learnerScope} expanded={benchOpen} onExpandedChange={setBenchOpen} onAskTeacher={askWithAssembly} />
+          <details className="lab-instructions" id="lab-steps"><summary>实验准备、课程原理与验证要求</summary>
+          <div className="lab-guide-columns">
             <section><span>01 / 对应课程知识</span><h3>{guide.ppt}</h3><p>{LAB_PPT_NOTES[guide.id]}</p></section>
             <section><span>02 / 实验准备</span><h3>先核对器件与条件</h3><ul>{guide.wiring.map(v => <li key={v}>{v}</li>)}</ul></section>
             <section><span>03 / 编写与运行</span><h3>按报告完成程序</h3><ul>{guide.code.map(v => <li key={v}>{v}</li>)}</ul></section>
             <section><span>04 / 观察与验证</span><h3>用实际结果核对</h3><ul>{guide.resultChecks.map(v => <li key={v}>{v}</li>)}</ul><p><strong>记录：</strong>{guide.observations.join("；")}</p></section>
           </div>
+          <a className="btn quiet" href="/api/materials/original">下载原始八实验报告</a>
+          </details>
           <div className="lab-after-steps"><div><strong>遇到问题？</strong><p>先按上面的顺序检查，再写下实际现象；教师复核后给出针对本实验的指导。</p></div><a className="btn primary" href="#ask-teacher">向教师求助</a></div>
           <details className="lab-guide-more"><summary>查看本实验应保留的材料与板卡参考照片</summary><div><p><strong>资料准备：</strong>{guide.evidence}</p><a href={`/api/lab-help?lab=${guide.id}`} className="btn quiet">下载本实验核对单</a><figure className="board-reference"><a href="/prechin6-board-reference.jpg" target="_blank" rel="noopener noreferrer"><Image src="/prechin6-board-reference.jpg" alt="普中-6 V1.2 手册中的开发板各功能模块照片" width={1227} height={894} /></a><figcaption>厂家手册第 3.1 节开发板功能示意照片；仅供辨认模块，不代表本班实际板型、接线或实验结果。</figcaption></figure></div></details>
           {coursewareForLab(guide.id).length > 0 && <div className="lab-courseware"><div><span className="eyebrow">可选 / 配套原理课件</span><h3>需要理解原理时再打开</h3></div><div>{coursewareForLab(guide.id).map(item => <Link key={item.slug} href={`/courseware/${item.slug}`}>{item.title}<span aria-hidden="true">↗</span></Link>)}</div></div>}
-          <AssemblyDebugger labId={guide.id} onAskTeacher={askWithAssembly} />
           <MaterialLibrary classroomId={session.learner.classroom_id} labId={guide.id} />
           <div className="lab-sequence-footer"><span>实验顺序 {guide.id} / 8 · 切换只用于查看，不表示实验完成</span><div>{guide.id > 1 && <button type="button" className="btn quiet" onClick={() => selectLab(guide.id - 1)}>← 上一个实验</button>}{guide.id < 8 && <button type="button" className="btn" onClick={() => selectLab(guide.id + 1)}>查看下一个实验 →</button>}</div></div>
         </article>}

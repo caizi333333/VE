@@ -1774,3 +1774,11 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-help-evidence pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .assembly-clock { flex-wrap: wrap; }
 .assembly-clock select { min-width: 0; max-width: 100%; }
+.lab-instructions { margin: 20px 24px; border: 1px solid #d4dfd5; border-radius: 12px; padding: 16px; scroll-margin-top: 24px; }
+.lab-instructions > summary, .assembly-advanced > summary { cursor: pointer; font-weight: 700; line-height: 1.6; }
+.lab-instructions .lab-guide-columns { padding: 18px 0; }
+.assembly-advanced { margin: 14px 0; padding: 12px; border: 1px solid #cbdace; border-radius: 10px; }
+.assembly-advanced[open] > summary { margin-bottom: 12px; }
+.assembly-draft-status { display: block; color: #526457; margin: 8px 0; line-height: 1.6; }
+#lab-workbench { scroll-margin-top: 24px; }
+@media(max-width: 600px) { .lab-instructions { margin: 16px 18px; padding: 14px; } }

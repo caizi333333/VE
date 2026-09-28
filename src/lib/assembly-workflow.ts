@@ -20,6 +20,19 @@ export function isCurrentAssemblyRun(run: AssemblyRun | null, code: string, cloc
   return !!run && run.code === code && run.clockHz === clockHz && run.presetId === presetId;
 }
 
+export function assemblyStudentHint(labId: number, presetId: string): string {
+  switch (labId) {
+    case 1: return '先运行示例，观察出栈后 A、SP 和 RAM 30H 是否恢复；想看中间过程时再打开单步调试。';
+    case 2: return presetId === 'group-2025' ? '观察 P1 的分组电平。这个历史示例延时较长，点“继续观察”后比较变化。' : '先运行示例，观察 P1 各位的高低变化，再修改延时并重新运行。';
+    case 3: return '先运行，再点“继续观察”，对照 P0.0 的翻转与模拟时间。两次翻转才组成一个完整周期。';
+    case 4: return '先运行程序，再按一次虚拟按键，比较计数前后的变化。每次按键都会执行后续程序并更新读数。';
+    case 5: return presetId === 'basic' ? '先观察一个显示位的段码与位选；要看轮显，可在进阶调试中选择校正版程序。' : '先运行程序，对照八个显示位。“·”表示这次没有采到该位，可继续观察。';
+    case 6: return '观察 P2.0 控制信号的高低变化；这里没有声音，实际蜂鸣器效果需在实验板上验证。';
+    case 7: return presetId === 'basic' ? '运行示例，查看秒、分、时的进位；这个小例子用于检查进位逻辑。' : '运行后对照 RAM 时刻与显示采样，再继续观察进位和报警控制信号。';
+    default: return presetId === 'stepper-abstract' ? '观察采样中的相序变化；接实物电机前先核对教师提供的驱动器和接线资料。' : '观察控制脚高低电平，比较两个 PWM 示例；此处显示控制信号，不模拟电机转速。';
+  }
+}
+
 export function assemblyQuickStart(labId: number, presetId: string): { steps: number; instruction: string } {
   switch (labId) {
     case 1: return { steps: 9, instruction: '先运行 9 条，核对 A=58H、SP=40H、RAM 30H=7FH；重新加载后可逐条观察压栈和出栈。' };
