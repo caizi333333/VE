@@ -1466,7 +1466,7 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .specialty-entry { margin: 15px 0 0; color: #53715d; font-size: 14px; }
 .specialty-entry summary { cursor: pointer; width: fit-content; }
 .specialty-entry .btn { margin-top: 8px; }
-.lab-overview { overflow: hidden; border: 1px solid #ccdbcf; border-radius: 17px; background: #fff; box-shadow: 0 12px 34px #21432c0c; }
+.lab-overview { overflow: clip; border: 1px solid #ccdbcf; border-radius: 17px; background: #fff; box-shadow: 0 12px 34px #21432c0c; }
 .lab-overview-main { display: grid; grid-template-columns: minmax(0,1fr) minmax(300px, .78fr); align-items: center; gap: clamp(20px,3vw,40px); padding: clamp(20px,3vw,34px); background: linear-gradient(112deg,#f9fcf8 0,#edf4eb 100%); }
 .lab-overview-copy h2 { margin: 12px 0; max-width: 710px; font: 700 clamp(24px,2.6vw,35px)/1.28 "Songti SC", "STSong", "Noto Serif CJK SC", serif; color: #173d30; }
 .lab-overview-copy p { max-width: 700px; color: #455d4e; font-size: 16px; line-height: 1.7; }
@@ -1712,7 +1712,7 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 @media (max-width: 767px) { .cw-scope-head { display: block; } .cw-scope-badge { display: inline-block; margin-top: 12px; } .cw-scope-metrics { grid-template-columns: 1fr; } .cw-scope-metrics > div { padding: 12px 14px; } .cw-scope-chart { overflow-x: auto; } .cw-scope-chart svg { min-width: 550px; } .cw-scope-transport { align-items: stretch; flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { .cw-scope * { scroll-behavior: auto !important; } }
 
-.assembly-debugger { margin: 20px 24px; border: 1px solid #c7d8cb; background: #f7faf7; border-radius: 16px; overflow: hidden; }
+.assembly-debugger { margin: 20px 24px; border: 1px solid #c7d8cb; background: #f7faf7; border-radius: 16px; overflow: clip; }
 .assembly-debugger > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; cursor: pointer; list-style: none; padding: 17px 20px; min-height: 58px; color: #1b4631; }
 .assembly-debugger > summary::-webkit-details-marker { display: none; }
 .assembly-debugger > summary span { font-size: 13px; color: #6a785e; font-weight: 750; }
@@ -1721,7 +1721,10 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-body { border-top: 1px solid #d9e4da; padding: 20px; color: #283f32; }
 .assembly-body > p { margin: 0 0 8px; line-height: 1.6; }
 .assembly-source, .assembly-boundary { color: #54695b; font-size: 14px; }
-.assembly-layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 18px; margin: 18px 0; }
+.assembly-layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); grid-template-areas: "editor panel"; gap: 18px; margin: 18px 0; }
+.assembly-editor { grid-area: editor; }
+.assembly-panel { grid-area: panel; }
+.assembly-primary-actions { position: sticky; top: 8px; z-index: 4; padding: 10px 0; background: #fff; border-bottom: 1px solid #d4dfd5; }
 .assembly-editor, .assembly-panel { min-width: 0; }
 .assembly-editor label { display: block; margin-bottom: 7px; font-weight: 700; }
 .assembly-editor textarea { width: 100%; resize: vertical; min-height: 260px; padding: 13px; border: 1px solid #aec5b3; border-radius: 10px; background: #14241b; color: #edf6e9; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; tab-size: 4; }
@@ -1742,7 +1745,7 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-events { margin-top: 16px; font-size: 13px; }
 .assembly-events ol { max-height: 115px; overflow-y: auto; padding-left: 22px; margin: 5px 0; }
 .assembly-empty { padding: 18px; color: #526457; font-size: 14px; }
-@media(max-width: 850px) { .assembly-layout { grid-template-columns: 1fr; } }
+@media(max-width: 850px) { .assembly-layout { grid-template-columns: 1fr; grid-template-areas: "panel" "editor"; } }
 @media(max-width: 600px) { .assembly-debugger { margin: 16px 18px; } .assembly-body { padding: 16px; } .assembly-debugger > summary em { margin-left: 0; width: 100%; } .assembly-registers { grid-template-columns: repeat(2,1fr); } }
 .board-reference { margin: 18px 0 0; max-width: 720px; }
 .board-reference img { display: block; width: 100%; height: auto; border: 1px solid #d8e3da; border-radius: 10px; }

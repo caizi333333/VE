@@ -122,19 +122,12 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
     <div className="assembly-body">
       <p>{lab.purpose}</p>
       <div className="assembly-guide"><strong>先运行，再对照变化</strong><p>{assemblyStudentHint(labId, presetId)}</p><small>当前程序：{preset?.title ?? lab.title} · 晶振 {clockHz / 1_000_000} MHz。恢复的代码须重新运行，读数才会更新。</small></div>
-      <div className="assembly-layout">
-        <div className="assembly-editor">
-          <label htmlFor={`assembly-code-${labId}`}>8051 汇编代码</label>
-          <textarea id={`assembly-code-${labId}`} value={code} disabled={busy} maxLength={MAX_ASSEMBLY_CHARS} onChange={event => { setCode(event.target.value); setMessage(""); }} spellCheck={false} rows={Math.min(18, Math.max(10, code.split(/\r?\n/).length + 1))} aria-describedby={`assembly-limit-${labId}`} />
-          <small id={`assembly-limit-${labId}`}>可以先运行示例，再修改代码。修改后点击“运行程序”更新结果。支持本页示例使用的 8051 指令子集。</small>
-          <small className="assembly-draft-status" role="status">{draftStatus}</small>
-          <button className="btn quiet" type="button" disabled={busy || !code.trim()} onClick={() => download(code, 'asm')}>下载当前源码</button>
-        </div>
-        <div className="assembly-panel">
-          <div className="assembly-actions">
+          <div className="assembly-actions assembly-primary-actions">
             <button className="btn primary" id="run-program" type="button" disabled={busy || hydratedScope !== `${learnerScope}:${labId}`} onClick={() => void advance()}>{busy ? "正在运行…" : !loaded ? "运行程序" : steps >= MAX_STEPS ? "重新运行程序" : "继续观察"}</button>
             {lab.key && <button className="btn" type="button" disabled={!loaded || busy} onClick={() => void press()}>{lab.key.label}并观察</button>}
           </div>
+      <div className="assembly-layout">
+        <div className="assembly-panel">
           <details className="assembly-advanced"><summary>进阶调试：程序版本、单步与运行参数</summary>
           <p className="assembly-source">资料口径：{preset?.source ?? lab.source}。历史代码用于对照和调试；程序编译通过不等于本班实物验证通过。</p>
           {lab.variants && <label className="assembly-clock">程序版本<select value={presetId} disabled={busy} onChange={event => { const id = event.target.value; if (code !== (preset?.code ?? lab.code) && !window.confirm('切换版本将替换当前代码和草稿。请先下载源码保存。仍要切换吗？')) return; setPresetId(id); setCode(lab.variants?.find(item => item.id === id)?.code ?? lab.code); setResult(null); setSnapshot(null); setSteps(0); setMessage(""); keySteps.current = []; loadedCode.current = ""; }}><option value="basic">局部基础练习</option>{lab.variants.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
@@ -170,6 +163,13 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
             {tertiaryPort && result.tertiary_trace.length > 0 && <div className="assembly-trace"><strong>P2.0 分钟报警控制信号</strong><div className="assembly-trace-bars" role="img" aria-label="P2.0 蜂鸣器控制脚采样电平">{result.tertiary_trace.map(point => <span key={point.step} className={point.value & 1 ? "high" : "low"} title={`第 ${point.step.toLocaleString()} 条：${hex(point.value)}`} />)}</div><p>报警时两种电平交替；该图不等于可听音频或蜂鸣器实物测试。</p></div>}
           </div> : <p className="assembly-empty">点“运行程序”，这里会显示本次仿真的实际读数。无需先选择运行步数。</p>}
           {snapshot && <div className="assembly-evidence-actions"><button className="btn" type="button" disabled={!canUseEvidence} onClick={() => download(assemblyEvidenceFile(snapshot), 'json')}>下载调试记录</button>{onAskTeacher && <button className="btn primary" type="button" disabled={!canUseEvidence} onClick={() => onAskTeacher(snapshot)}>带入代码与记录，向教师求助</button>}<small>记录包含本次源码、晶振、按键、寄存器及采样值。带入后还需填写实际问题，由你提交。</small></div>}
+        </div>
+        <div className="assembly-editor">
+          <label htmlFor={`assembly-code-${labId}`}>8051 汇编代码</label>
+          <textarea id={`assembly-code-${labId}`} value={code} disabled={busy} maxLength={MAX_ASSEMBLY_CHARS} onChange={event => { setCode(event.target.value); setMessage(""); }} spellCheck={false} rows={Math.min(18, Math.max(10, code.split(/\r?\n/).length + 1))} aria-describedby={`assembly-limit-${labId}`} />
+          <small id={`assembly-limit-${labId}`}>可以先运行示例，再修改代码。修改后点击“运行程序”更新结果。支持本页示例使用的 8051 指令子集。</small>
+          <small className="assembly-draft-status" role="status">{draftStatus}</small>
+          <button className="btn quiet" type="button" disabled={busy || !code.trim()} onClick={() => download(code, 'asm')}>下载当前源码</button>
         </div>
       </div>
       <p className="assembly-boundary">{lab.observation} 此处读数对应经典 12T 8051 指令仿真；端口电平不等于板上器件已正常工作。电机、蜂鸣器、数码管和接线须按本班器材验证。</p>
