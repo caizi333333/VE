@@ -12,7 +12,7 @@ import { REDACTION_RULE_LABELS } from "@/lib/api-types";
 import { LAB_GUIDES, LAB_PPT_NOTES, LAB_REPORT_TITLES, labGuide } from "@/lib/lab-guides";
 import AssemblyDebugger from "@/components/AssemblyDebugger";
 import { prepareAssemblyHelp, type AssemblyRun } from "@/lib/assembly-workflow";
-import { clearLabDrafts, readLabDraft, readLastLab, saveLastLab } from "@/lib/lab-drafts";
+import { clearHelpDraft, clearLabDrafts, readHelpDraft, readLabDraft, readLastLab, readLastTicket, saveHelpDraft, saveLastLab, saveLastTicket } from "@/lib/lab-drafts";
 import { coursewareForLab } from "@/lib/courseware";
 import type {
   SessionView,
@@ -55,6 +55,8 @@ export default function StudentPage() {
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(false);
   const [requestKey, setRequestKey] = useState("");
+  const [restoredHelp, setRestoredHelp] = useState("");
+  const [helpDraftStatus, setHelpDraftStatus] = useState("");
   const recognition = useRef<{ start: () => void; stop: () => void } | null>(null);
   const labNav = useRef<HTMLDivElement | null>(null);
   const guide = labGuide(labId);
@@ -64,6 +66,8 @@ export default function StudentPage() {
     const params = new URLSearchParams(window.location.search);
     try {
       const previous = readLastLab(window.localStorage, learnerScope);
+      const previousTicket = readLastTicket(window.localStorage, learnerScope);
+      if (previousTicket) setLastTicket(previousTicket);
       if (!params.has("t") && !labGuide(Number(params.get("lab"))) && previous) setLabId(previous);
     } catch { /* The editor offers a source download when browser storage is unavailable. */ }
     setRestoredScope(learnerScope);
@@ -75,6 +79,30 @@ export default function StudentPage() {
       saveLastLab(window.localStorage, learnerScope, labId);
     } catch { setHasDraft(false); }
   }, [learnerScope, restoredScope, labId, guide, ticket]);
+  const helpScope = `${learnerScope}:${labId}`;
+  useEffect(() => {
+    if (!learnerScope || restoredScope !== learnerScope || !lastTicket) return;
+    try { saveLastTicket(window.localStorage, learnerScope, lastTicket); }
+    catch { /* The visible ticket number remains available when storage is blocked. */ }
+  }, [learnerScope, restoredScope, lastTicket]);
+  useEffect(() => {
+    if (!learnerScope || restoredScope !== learnerScope || !guide || ticket || revision || restoredHelp === helpScope) return;
+    try {
+      const draft = readHelpDraft(window.localStorage, learnerScope, labId);
+      setSymptom(draft?.symptom ?? ""); setCode(draft?.code ?? "");
+      setAssemblyEvidence(draft?.evidence ?? ""); setIssueType(draft?.issueType ?? null);
+      setRequestKey(draft?.requestKey ?? "");
+      setHelpDraftStatus(draft ? "已恢复本实验尚未提交的求助草稿，请核对现象和代码后提交。" : "");
+    } catch { setHelpDraftStatus("求助草稿无法自动保存，请在离开页面前下载草稿。"); }
+    setRestoredHelp(helpScope);
+  }, [learnerScope, restoredScope, guide, ticket, revision, restoredHelp, helpScope, labId]);
+  useEffect(() => {
+    if (!learnerScope || !guide || ticket || revision || restoredHelp !== helpScope) return;
+    try {
+      saveHelpDraft(window.localStorage, learnerScope, { version: 1, labId, symptom, code, evidence: assemblyEvidence, issueType, requestKey });
+      setHelpDraftStatus(symptom || code || assemblyEvidence ? "求助草稿已保存到此浏览器，尚未提交。切换实验或刷新可继续；退出课堂会清除。" : "");
+    } catch { setHelpDraftStatus("求助草稿无法自动保存，请在离开页面前下载草稿。"); }
+  }, [learnerScope, guide, ticket, revision, restoredHelp, helpScope, labId, symptom, code, assemblyEvidence, issueType, requestKey]);
   const openBench = () => {
     setBenchOpen(true);
     window.requestAnimationFrame(() => {
@@ -83,7 +111,9 @@ export default function StudentPage() {
     });
   };
   const selectLab = (id: number) => {
-    if (!labGuide(id)) return;
+    if (busy || !labGuide(id) || id === labId) return;
+    if (helpDraftStatus.includes("无法自动保存") && (symptom || code || assemblyEvidence) && !window.confirm("求助草稿尚未保存。请先下载草稿；仍要切换实验吗？")) return;
+    recognition.current?.stop();
     setLabId(id);
     setBenchOpen(false);
     setIssueType(null);
@@ -266,6 +296,7 @@ export default function StudentPage() {
       setExperiments([]);
       setRestoredScope(""); setBenchOpen(false); setHasDraft(false); setLookup(""); setLastTicket(""); setLabId(1);
       setSymptom(""); setCode(""); setAssemblyEvidence(""); setRequestKey("");
+      setRestoredHelp(""); setHelpDraftStatus(""); setRevision(false); recognition.current?.stop();
       window.history.replaceState(null, "", "/");
     } catch (e) {
       setError(errorText(e));
@@ -301,7 +332,11 @@ export default function StudentPage() {
           : {}),
       });
       setLookup(result.ticket);
+      setLastTicket(result.ticket);
       if (await loadTicket(result.ticket, true)) {
+        if (guide && !revision) {
+          try { clearHelpDraft(window.localStorage, learnerScope, labId); } catch { /* Keep the received ticket visible. */ }
+        }
         setRequestKey("");
         setSymptom("");
         setCode("");
@@ -326,7 +361,14 @@ export default function StudentPage() {
     setCode("");
     setAssemblyEvidence("");
     setError("");
-    window.history.replaceState(null, "", "/");
+    setRestoredHelp("");
+    window.history.replaceState(null, "", labGuide(labId) ? `/?lab=${labId}` : "/");
+  };
+  const downloadHelp = () => {
+    const content = [`实验 ${labId} · 尚未提交的求助草稿`, symptom, code ? `相关代码：\n${code}` : "", assemblyEvidence].filter(Boolean).join("\n\n");
+    const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = `lab${labId}-help-draft.txt`; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   const editRevision = () => {
     if (!ticket) return;
@@ -427,7 +469,7 @@ export default function StudentPage() {
               返回实验
             </button>
           )}
-          {!ticket && lastTicket && <button className="btn" onClick={() => void loadTicket(lastTicket)}>查看上次求助</button>}
+          {!ticket && lastTicket && <button className="btn" disabled={busy} onClick={() => void loadTicket(lastTicket)}>查看上次求助</button>}
           <button className="btn quiet" onClick={logout} disabled={busy}>
             退出课堂
           </button>
@@ -588,6 +630,7 @@ export default function StudentPage() {
                     </label>
                   </details>
                   <p className="compose-privacy">请勿填写姓名、学号或联系方式。教师审核后才会显示指导。</p>
+                  {!revision && guide && <div className="help-draft-actions"><small role="status">{helpDraftStatus}</small><button className="btn quiet" type="button" disabled={busy || !(symptom || code || assemblyEvidence)} onClick={downloadHelp}>下载求助草稿</button></div>}
                   {identityHits.length > 0 && (
                     <p className="notice error" role="alert">
                       检测到疑似身份信息：

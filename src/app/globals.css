@@ -1785,3 +1785,5 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-draft-status { display: block; color: #526457; margin: 8px 0; line-height: 1.6; }
 #lab-workbench { scroll-margin-top: 24px; }
 @media(max-width: 600px) { .lab-instructions { margin: 16px 18px; padding: 14px; } }
+.help-draft-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.help-draft-actions small { flex: 1 1 240px; color: var(--muted); }
