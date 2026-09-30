@@ -7,6 +7,7 @@ import { assemblyEvidenceFile, assemblyQuickStart, assemblyStudentHint, isCurren
 import { readLabDraft, saveLabDraft } from "@/lib/lab-drafts";
 
 const MAX_STEPS = 2_000_000;
+type RetryAction = { kind: 'reset' | 'run'; count: number } | { kind: 'press' };
 const hex = (value: number) => `${(value & 255).toString(16).toUpperCase().padStart(2, "0")}H`;
 const SEGMENTS = new Map([[0x3f, '0'], [0x06, '1'], [0x5b, '2'], [0x4f, '3'], [0x66, '4'], [0x6d, '5'], [0x7d, '6'], [0x07, '7'], [0x7f, '8'], [0x6f, '9'], [0x40, '−']]);
 const PHASES = new Map([[0x01, 'A'], [0x03, 'AB'], [0x02, 'B'], [0x06, 'BC'], [0x04, 'C'], [0x0c, 'CD'], [0x08, 'D'], [0x09, 'DA']]);
@@ -30,6 +31,8 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
   const [steps, setSteps] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [retryAction, setRetryAction] = useState<RetryAction | null>(null);
+  const [waitSeconds, setWaitSeconds] = useState(0);
   const [clockHz, setClockHz] = useState(12_000_000);
   const [traceWindow, setTraceWindow] = useState(defaultTraceWindow(labId));
   const [presetId, setPresetId] = useState(defaultPreset(labId));
@@ -40,13 +43,21 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
   const loadedCode = useRef("");
 
   useEffect(() => {
+    if (!busy) return;
+    const started = Date.now();
+    setWaitSeconds(0);
+    const timer = window.setInterval(() => setWaitSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [busy]);
+
+  useEffect(() => {
     const initialPreset = defaultPreset(lab?.id ?? 0);
     let draft = null;
     try { draft = readLabDraft(window.localStorage, learnerScope, labId); }
     catch { setDraftStatus("自动保存不可用，请下载源码保留修改。"); }
     setCode(draft?.code ?? lab?.variants?.find(item => item.id === initialPreset)?.code ?? lab?.code ?? "");
     setPresetId(draft?.presetId ?? initialPreset); setClockHz(draft?.clockHz ?? 12_000_000); setTraceWindow(draft?.traceWindow ?? defaultTraceWindow(labId));
-    setResult(null); setSteps(0); setMessage("");
+    setResult(null); setSteps(0); setMessage(""); setRetryAction(null);
     keySteps.current = []; loadedCode.current = "";
     setSnapshot(null); setHydratedScope(`${learnerScope}:${labId}`);
   }, [labId, learnerScope, lab?.id, lab?.code, lab?.variants]);
@@ -74,23 +85,24 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
     lab_id: labId, code, steps: count, key_steps: keys, clock_hz: clockHz, trace_port: tracePort, secondary_port: displayPort, tertiary_port: tertiaryPort, trace_window: traceWindow || undefined,
   });
   const reset = async (count = 0) => {
+    setRetryAction(null);
     try { normalizeAssembly(code); } catch (cause) { setMessage(errorText(cause)); return; }
     setBusy(true); setMessage(""); setResult(null); setSnapshot(null); loadedCode.current = "";
     try {
       const next = await verify(count, []);
       loadedCode.current = code; keySteps.current = [];
       setResult(next); setSteps(count); capture(next, []);
-    } catch (cause) { setMessage(errorText(cause)); }
+    } catch (cause) { setMessage(errorText(cause)); setRetryAction({ kind: 'reset', count }); }
     finally { setBusy(false); }
   };
   const run = async (count: number) => {
     if (!result || loadedCode.current !== code) { setMessage("程序已修改，请先编译并加载。"); return; }
     if (steps + count > MAX_STEPS) { setMessage("本次最多执行 200 万条指令；请重新加载程序。"); return; }
-    setBusy(true); setMessage("");
+    setBusy(true); setMessage(""); setRetryAction(null);
     try {
       const next = await verify(steps + count, keySteps.current);
       setResult(next); setSteps(steps + count); capture(next, keySteps.current);
-    } catch (cause) { setMessage(errorText(cause)); }
+    } catch (cause) { setMessage(errorText(cause)); setRetryAction({ kind: 'run', count }); }
     finally { setBusy(false); }
   };
   const press = async () => {
@@ -99,11 +111,11 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
     if (keySteps.current.length >= 8) { setMessage("一次调试最多记录 8 次按键，请重新加载程序。"); return; }
     if (steps + 25 > MAX_STEPS) { setMessage("本次运行已接近上限，请在进阶调试中重新加载程序。"); return; }
     const keys = [...keySteps.current, steps];
-    setBusy(true); setMessage("");
+    setBusy(true); setMessage(""); setRetryAction(null);
     try {
       const next = await verify(steps + 25, keys);
       keySteps.current = keys; setResult(next); setSteps(steps + 25); capture(next, keys);
-    } catch (cause) { setMessage(errorText(cause)); }
+    } catch (cause) { setMessage(errorText(cause)); setRetryAction({ kind: 'press' }); }
     finally { setBusy(false); }
   };
   const download = (content: string, extension: string) => {
@@ -116,33 +128,53 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
   const continueSteps = labId === 2 && presetId === 'group-2025' ? 500_000 : quickStart.steps;
   const advance = () => !loaded || steps >= MAX_STEPS ? reset(quickStart.steps) : run(Math.min(continueSteps, MAX_STEPS - steps));
   const observedPort = tracePort ? result?.registers[tracePort] : undefined;
+  const focusCode = () => {
+    const editor = document.getElementById(`assembly-code-${labId}`);
+    editor?.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    editor?.focus({ preventScroll: true });
+  };
+  const retry = () => {
+    if (!retryAction || busy) return;
+    if (retryAction.kind === 'press') void press();
+    else if (retryAction.kind === 'reset') void reset(retryAction.count);
+    else void run(retryAction.count);
+  };
+  const restoreExample = () => {
+    if (!window.confirm('恢复示例会替换当前代码和草稿。请先下载源码保留修改。仍要恢复吗？')) return;
+    setCode(preset?.code ?? lab.code); setResult(null); setSnapshot(null); setSteps(0); setMessage(''); setRetryAction(null);
+    keySteps.current = []; loadedCode.current = '';
+    focusCode();
+  };
 
   return <details className="assembly-debugger" id="lab-workbench" open={expanded} onToggle={event => onExpandedChange(event.currentTarget.open)}>
     <summary><span>动手实验 · 代码与观察</span><strong>{lab.title}</strong><em>{expanded ? '收起实验台' : '展开实验台 ↗'}</em></summary>
     <div className="assembly-body">
+      <ol className="assembly-journey" aria-label="实验操作顺序"><li aria-current={!loaded ? 'step' : undefined}><span>1</span>运行程序</li><li aria-current={loaded ? 'step' : undefined}><span>2</span>对照读数</li><li><span>3</span>记录或求助</li></ol>
       <p>{lab.purpose}</p>
       <div className="assembly-guide"><strong>先运行，再对照变化</strong><p>{assemblyStudentHint(labId, presetId)}</p><small>当前程序：{preset?.title ?? lab.title} · 晶振 {clockHz / 1_000_000} MHz。恢复的代码须重新运行，读数才会更新。</small></div>
           <div className="assembly-actions assembly-primary-actions">
             <button className="btn primary" id="run-program" type="button" disabled={busy || hydratedScope !== `${learnerScope}:${labId}`} onClick={() => void advance()}>{busy ? "正在运行…" : !loaded ? "运行程序" : steps >= MAX_STEPS ? "重新运行程序" : "继续观察"}</button>
             {lab.key && <button className="btn" type="button" disabled={!loaded || busy} onClick={() => void press()}>{lab.key.label}并观察</button>}
           </div>
+      {busy && <div className="assembly-wait" role="status" aria-live="polite"><span className="busy-dot" aria-hidden="true" /><div><strong>正在编译并执行程序 · 已等待 {waitSeconds} 秒</strong><p>{waitSeconds >= 8 ? '本次执行仍在等待服务返回。请勿重复点击；可以下载源码保留当前修改。' : '结果返回后会更新下方读数。这里显示实际等待时间。'}</p></div></div>}
       <div className="assembly-layout">
         <div className="assembly-panel">
           <details className="assembly-advanced"><summary>进阶调试：程序版本、单步与运行参数</summary>
           <p className="assembly-source">资料口径：{preset?.source ?? lab.source}。历史代码用于对照和调试；程序编译通过不等于本班实物验证通过。</p>
-          {lab.variants && <label className="assembly-clock">程序版本<select value={presetId} disabled={busy} onChange={event => { const id = event.target.value; if (code !== (preset?.code ?? lab.code) && !window.confirm('切换版本将替换当前代码和草稿。请先下载源码保存。仍要切换吗？')) return; setPresetId(id); setCode(lab.variants?.find(item => item.id === id)?.code ?? lab.code); setResult(null); setSnapshot(null); setSteps(0); setMessage(""); keySteps.current = []; loadedCode.current = ""; }}><option value="basic">局部基础练习</option>{lab.variants.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
+          {lab.variants && <label className="assembly-clock">程序版本<select value={presetId} disabled={busy} onChange={event => { const id = event.target.value; if (code !== (preset?.code ?? lab.code) && !window.confirm('切换版本将替换当前代码和草稿。请先下载源码保存。仍要切换吗？')) return; setPresetId(id); setCode(lab.variants?.find(item => item.id === id)?.code ?? lab.code); setResult(null); setSnapshot(null); setSteps(0); setMessage(""); setRetryAction(null); keySteps.current = []; loadedCode.current = ""; }}><option value="basic">局部基础练习</option>{lab.variants.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
           <p>{quickStart.instruction}</p>
           <div className="assembly-actions">
             <button className="btn quiet" type="button" disabled={busy} onClick={() => void reset()}>重新编译并加载（从头调试）</button>
             {[1, 500, 5_000, 50_000, 500_000].map(count => <button className="btn quiet" type="button" key={count} disabled={!loaded || busy || steps + count > MAX_STEPS} onClick={() => void run(count)}>+{count.toLocaleString()} 条</button>)}
           </div>
-          <label className="assembly-clock">晶振条件<select value={clockHz} disabled={busy} onChange={event => { setClockHz(Number(event.target.value)); setResult(null); setSnapshot(null); setSteps(0); keySteps.current = []; loadedCode.current = ""; }}><option value={12_000_000}>12 MHz（报告）</option><option value={11_059_200}>11.0592 MHz（对照）</option></select></label>
+          <label className="assembly-clock">晶振条件<select value={clockHz} disabled={busy} onChange={event => { setClockHz(Number(event.target.value)); setResult(null); setSnapshot(null); setSteps(0); setMessage(""); setRetryAction(null); keySteps.current = []; loadedCode.current = ""; }}><option value={12_000_000}>12 MHz（报告）</option><option value={11_059_200}>11.0592 MHz（对照）</option></select></label>
           {tracePort && <label className="assembly-clock">下一次运行的采样范围<select value={traceWindow} disabled={busy} onChange={event => setTraceWindow(Number(event.target.value))}><option value={0}>从加载到当前</option><option value={500}>最近 500 条</option><option value={5_000}>最近 5,000 条</option><option value={50_000}>最近 50,000 条</option></select></label>}
           </details>
-          {message && <p className={message.startsWith("已记录") ? "notice" : "notice error"} role="alert">{message}</p>}
+          {message && <div className="assembly-recovery"><p className="notice error" role="alert">{message}</p><div className="assembly-actions">{retryAction && <button className="btn" type="button" disabled={busy} onClick={retry}>{retryAction.kind === 'press' ? '重试本次按键' : '重试本次运行'}</button>}<button className="btn quiet" type="button" disabled={busy} onClick={focusCode}>检查代码</button></div><small>当前源码仍保留。失败的运行或按键不会计入成功记录。</small></div>}
           {result && !loaded && <p className="notice error" role="status">代码已修改，下方是上一版程序的结果。请重新编译；旧结果暂不能下载或带入求助。</p>}
           {result ? <div className="assembly-native" role="status">
             <strong>本次运行的观察结果{!loaded ? '（上一版）' : ''}</strong>
+            {loaded && <div className="assembly-next-step"><strong>下一步</strong><p>{labId === 4 && keySteps.current.length === 0 ? '按一次虚拟 P3.2，比较按键前后的 RAM 30H 计数。' : '对照上方观察提示与本次读数；可继续观察，或只修改一处代码再运行，比较变化。'}</p><button className="btn quiet" type="button" disabled={busy} onClick={focusCode}>修改代码，比较变化</button></div>}
             <p>累计模拟时间 {(result.elapsed_seconds * 1000).toFixed(3)} ms · 已执行 {steps.toLocaleString()} 条指令</p>
             {labId === 1 && <p>累加器 A：{hex(result.registers.A)} · 栈指针 SP：{hex(result.registers.SP)}</p>}
             {labId === 4 && steps > 0 && <p>已执行 {keySteps.current.length} 次虚拟按键 · RAM 30H 计数：{result.ram['30H']}</p>}
@@ -166,10 +198,11 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
         </div>
         <div className="assembly-editor">
           <label htmlFor={`assembly-code-${labId}`}>8051 汇编代码</label>
-          <textarea id={`assembly-code-${labId}`} value={code} disabled={busy} maxLength={MAX_ASSEMBLY_CHARS} onChange={event => { setCode(event.target.value); setMessage(""); }} spellCheck={false} rows={Math.min(18, Math.max(10, code.split(/\r?\n/).length + 1))} aria-describedby={`assembly-limit-${labId}`} />
+          <textarea id={`assembly-code-${labId}`} value={code} disabled={busy} maxLength={MAX_ASSEMBLY_CHARS} onChange={event => { setCode(event.target.value); setMessage(""); setRetryAction(null); }} onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !busy && hydratedScope === `${learnerScope}:${labId}`) { event.preventDefault(); void advance(); } }} spellCheck={false} rows={Math.min(18, Math.max(10, code.split(/\r?\n/).length + 1))} aria-describedby={`assembly-limit-${labId}`} />
           <small id={`assembly-limit-${labId}`}>可以先运行示例，再修改代码。修改后点击“运行程序”更新结果。支持本页示例使用的 8051 指令子集。</small>
           <small className="assembly-draft-status" role="status">{draftStatus}</small>
-          <button className="btn quiet" type="button" disabled={busy || !code.trim()} onClick={() => download(code, 'asm')}>下载当前源码</button>
+          <small>在代码框内按 ⌘ / Ctrl + Enter，可运行或继续观察。</small>
+          <div className="assembly-actions"><button className="btn quiet" type="button" disabled={!code.trim()} onClick={() => download(code, 'asm')}>下载当前源码</button><button className="btn quiet" type="button" disabled={busy || code === (preset?.code ?? lab.code)} onClick={restoreExample}>恢复当前版本示例</button></div>
         </div>
       </div>
       <p className="assembly-boundary">{lab.observation} 此处读数对应经典 12T 8051 指令仿真；端口电平不等于板上器件已正常工作。电机、蜂鸣器、数码管和接线须按本班器材验证。</p>

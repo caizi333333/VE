@@ -1785,3 +1785,16 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-draft-status { display: block; color: #526457; margin: 8px 0; line-height: 1.6; }
 #lab-workbench { scroll-margin-top: 24px; }
 @media(max-width: 600px) { .lab-instructions { margin: 16px 18px; padding: 14px; } }
+.help-draft-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.help-draft-actions small { flex: 1 1 240px; color: var(--muted); }
+.assembly-journey { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 0; margin: 0 0 16px; list-style: none; color: var(--muted); font-size: 13px; }
+.assembly-journey li { display: flex; align-items: center; gap: 6px; }
+.assembly-journey span { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #b7d2bd; border-radius: 50%; }
+.assembly-journey [aria-current="step"] { color: var(--panel); font-weight: 700; }
+.assembly-journey [aria-current="step"] span { background: var(--panel); border-color: var(--panel); color: white; }
+.assembly-wait { display: flex; align-items: flex-start; gap: 12px; padding: 14px; margin: 12px 0; background: #edf5ee; border-radius: 10px; font-size: 14px; }
+.assembly-wait p { margin: 6px 0 0; color: var(--muted); }
+.assembly-next-step { margin-top: 12px; padding: 12px; background: #fff; border-radius: 8px; }
+.assembly-next-step .btn { margin-top: 10px; }
+.assembly-recovery { margin: 12px 0; }
+.assembly-recovery small { display: block; margin-top: 8px; color: var(--muted); }
