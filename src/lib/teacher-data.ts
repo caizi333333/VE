@@ -4,6 +4,7 @@ import { HttpError } from './auth';
 import type { Assessment, Checkpoint, ExperimentConfig, PracticeTaskView, RubricItem, TeacherDiagnosisView, TeacherListView } from './api-types';
 import { readJson, stableCheckpoints, toAttemptView, type DiagnosisRecord, type PublishedPayload } from './ticket-view';
 import { labGuide } from './lab-guides';
+import type { LabCodeAnalysis } from './lab-code-checks';
 
 export async function ownedClassroom(teacherId: string, classroomId: string) {
   const classroom = await prisma.classroom.findFirst({ where: { id: classroomId, teacherId } });
@@ -23,6 +24,7 @@ export function toTeacherDiagnosis(record: DiagnosisRecord, experimentName = '',
     learner_number: learnerNumber,
     bench_label: record.benchLabel, data_source: record.dataSource, symptom: record.symptomText, code: record.codeText,
     classification: record.classification, review_notes: readJson<string[]>(record.reviewNotes, []),
+    code_analysis: readJson<{ code_analysis?: LabCodeAnalysis }>(record.configSnapshot, {}).code_analysis,
     checkpoints: draft?.checkpoints ?? (legacyReview ? stableCheckpoints(readJson<Checkpoint[]>(legacyReview.checkpoints, []), record.round) : original.checkpoints), bridging_task: draft?.bridging_task ?? legacyReview?.bridgingTask ?? original.bridging_task,
     tasks: draft?.tasks ?? readJson<PracticeTaskView[]>(record.taskPackJson, []),
     assessments: draft?.assessments ?? readJson<Assessment[]>(record.assessmentJson, []),

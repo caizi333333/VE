@@ -290,10 +290,23 @@ function ReviewEditor({
         {item.code && (
           <details open>
             <summary>查看提交代码</summary>
-            <pre className="code-block">{item.code}</pre>
+            <pre className="code-block">{item.code.split('\n').map((line, index) => `${index + 1} │ ${line}`).join('\n')}</pre>
           </details>
         )}
       </section>
+      {item.code_analysis && (
+        <section className="editor-section code-checks" aria-label="提交代码的检查依据">
+          <div className="row between"><h3>代码检查依据</h3><span className="badge pending">候选检查 · 待复核</span></div>
+          <p className="muted">{item.code_analysis.summary}</p>
+          {item.code_analysis.findings.map(finding => (
+            <article className="code-check-evidence" key={finding.rule}>
+              <h4>{finding.title}</h4>
+              <pre className="code-block">{finding.evidence.map(line => `${line.line} │ ${line.text}`).join('\n')}</pre>
+              <p>{finding.instruction}</p>
+            </article>
+          ))}
+        </section>
+      )}
       {item.review_notes.length > 0 && (
         <div className="notice warning" style={{ marginTop: 20 }}>
           <strong>请重点核实</strong>
@@ -306,7 +319,7 @@ function ReviewEditor({
       )}
       <section className="editor-section">
         <details>
-          <summary>对照模型初稿</summary>
+          <summary>对照系统初稿</summary>
           <ol style={{ paddingLeft: 24 }}>
             {item.original.checkpoints.map((c, i) => (
               <li key={i}>

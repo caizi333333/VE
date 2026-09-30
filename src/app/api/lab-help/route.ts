@@ -8,6 +8,7 @@ import { getPoint } from '@/lib/knowledge-graph';
 import { redactSubmission } from '@/lib/redact';
 import { allocateTicket, normalizeTicket } from '@/lib/ticket';
 import { readJson } from '@/lib/ticket-view';
+import { analyzeLabCode, LAB_CODE_CHECK_VERSION } from '@/lib/lab-code-checks';
 
 const schema = z.object({
   lab_id: z.number().int().min(1).max(8),
@@ -79,11 +80,14 @@ export const POST = withErrors(async (request: Request) => {
   }
   const ticket = original?.ticket ?? await allocateTicket();
   const point = getPoint(guide.pointId)!;
+  const codeAnalysis = analyzeLabCode(guide.id, redacted.code);
   const suggestedChecks = input.issue_type === 'wiring' ? guide.wiring
     : input.issue_type === 'code' ? guide.code
     : input.issue_type === 'result' ? guide.resultChecks
     : [guide.wiring[0], guide.code[0]];
-  const checkpoints = suggestedChecks.filter(Boolean).map((instruction, index) => ({
+  const codeChecks = codeAnalysis.findings.map(finding => finding.instruction);
+  const orderedChecks = input.issue_type === 'wiring' ? [...suggestedChecks, ...codeChecks] : [...codeChecks, ...suggestedChecks];
+  const checkpoints = [...new Set(orderedChecks.filter(Boolean))].slice(0, 8).map((instruction, index) => ({
     id: `r${original ? original.round + 1 : 1}-cp${index + 1}`,
     point_id: point.id,
     instruction,
@@ -104,10 +108,10 @@ export const POST = withErrors(async (request: Request) => {
           chainPointIds: JSON.stringify([point.id]), provider: '', model: '',
           classification: `实验${guide.id}：${guide.title} · 待教师指导`,
           checkpoints: JSON.stringify(checkpoints), bridgingTask: `先记录${guide.observations.join('与')}，对照本次实验目标说明差异。`,
-          reviewNotes: JSON.stringify(['以下为课程资料整理的待复核检查草稿；未调用模型。教师须核对实际实验板、代码及接线后再发布。', `课件对照：${LAB_PPT_NOTES[guide.id]}`]),
+          reviewNotes: JSON.stringify(['以下为课程核对单与有限代码检查的待复核草稿；未调用模型。候选检查不是故障结论，教师须核对完整代码、实际实验板和接线后再发布。', codeAnalysis.summary, `课件对照：${LAB_PPT_NOTES[guide.id]}`]),
           rawResponse: '', status: 'manual_pending',
-          promptVersion: 'manual-lab-guide-v1', graphVersion: 'manual-lab-guide-v1',
-          configSnapshot: JSON.stringify({ configuration_confirmed: false, lab_id: guide.id, issue_type: input.issue_type ?? null }),
+          promptVersion: LAB_CODE_CHECK_VERSION, graphVersion: 'manual-lab-guide-v1',
+          configSnapshot: JSON.stringify({ configuration_confirmed: false, lab_id: guide.id, issue_type: input.issue_type ?? null, code_analysis: codeAnalysis }),
           rubricSnapshot: '[]', assessmentJson: '[]',
           constraintSnapshot: JSON.stringify({ points: [{ id: point.id, name: point.name, chapter: point.chapter }], edges: [] }),
           taskPackJson: JSON.stringify(taskPack),
@@ -124,6 +128,9 @@ export const POST = withErrors(async (request: Request) => {
               ...readJson<unknown[]>(original.roundsJson, []),
               { round: original.round, symptom: original.symptomText, code: original.codeText,
                 classification: original.classification, published_version: original.publishedVersion,
+                checkpoints: readJson(original.checkpoints, []), bridging_task: original.bridgingTask,
+                tasks: readJson(original.taskPackJson, []), review_notes: readJson(original.reviewNotes, []),
+                config: readJson(original.configSnapshot, {}), prompt_version: original.promptVersion,
                 archived_at: new Date().toISOString() },
             ]),
           },
