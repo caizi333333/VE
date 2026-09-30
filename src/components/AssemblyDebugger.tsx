@@ -151,7 +151,7 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
     <div className="assembly-body">
       <ol className="assembly-journey" aria-label="实验操作顺序"><li aria-current={!loaded ? 'step' : undefined}><span>1</span>运行程序</li><li aria-current={loaded ? 'step' : undefined}><span>2</span>对照读数</li><li><span>3</span>记录或求助</li></ol>
       <p>{lab.purpose}</p>
-      <div className="assembly-guide"><strong>先运行，再对照变化</strong><p>{assemblyStudentHint(labId, presetId)}</p><small>当前程序：{preset?.title ?? lab.title} · 晶振 {clockHz / 1_000_000} MHz。恢复的代码须重新运行，读数才会更新。</small></div>
+      <div className="assembly-guide"><strong>这次重点观察</strong><p>{assemblyStudentHint(labId, presetId)}</p><small>当前程序：{preset?.title ?? lab.title} · {clockHz / 1_000_000} MHz。草稿恢复后请重新运行。</small></div>
           <div className="assembly-actions assembly-primary-actions">
             <button className="btn primary" id="run-program" type="button" disabled={busy || hydratedScope !== `${learnerScope}:${labId}`} onClick={() => void advance()}>{busy ? "正在运行…" : !loaded ? "运行程序" : steps >= MAX_STEPS ? "重新运行程序" : "继续观察"}</button>
             {lab.key && <button className="btn" type="button" disabled={!loaded || busy} onClick={() => void press()}>{lab.key.label}并观察</button>}
@@ -173,11 +173,11 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
           {message && <div className="assembly-recovery"><p className="notice error" role="alert">{message}</p><div className="assembly-actions">{retryAction && <button className="btn" type="button" disabled={busy} onClick={retry}>{retryAction.kind === 'press' ? '重试本次按键' : '重试本次运行'}</button>}<button className="btn quiet" type="button" disabled={busy} onClick={focusCode}>检查代码</button></div><small>当前源码仍保留。失败的运行或按键不会计入成功记录。</small></div>}
           {result && !loaded && <p className="notice error" role="status">代码已修改，下方是上一版程序的结果。请重新编译；旧结果暂不能下载或带入求助。</p>}
           {result ? <div className="assembly-native" role="status">
-            <strong>本次运行的观察结果{!loaded ? '（上一版）' : ''}</strong>
-            {loaded && <div className="assembly-next-step"><strong>下一步</strong><p>{labId === 4 && keySteps.current.length === 0 ? '按一次虚拟 P3.2，比较按键前后的 RAM 30H 计数。' : '对照上方观察提示与本次读数；可继续观察，或只修改一处代码再运行，比较变化。'}</p><button className="btn quiet" type="button" disabled={busy} onClick={focusCode}>修改代码，比较变化</button></div>}
+            <div className="assembly-result-head"><strong>本次运行的观察结果{!loaded ? '（上一版）' : ''}</strong><span>{loaded ? '仿真已返回' : '待重新运行'}</span></div>
             <p>累计模拟时间 {(result.elapsed_seconds * 1000).toFixed(3)} ms · 已执行 {steps.toLocaleString()} 条指令</p>
             {labId === 1 && <p>累加器 A：{hex(result.registers.A)} · 栈指针 SP：{hex(result.registers.SP)}</p>}
-            {labId === 4 && steps > 0 && <p>已执行 {keySteps.current.length} 次虚拟按键 · RAM 30H 计数：{result.ram['30H']}</p>}
+            {labId === 4 && steps > 0 && <p className="assembly-key-readout">已执行 {keySteps.current.length} 次虚拟按键 · RAM 30H 计数：<strong>{result.ram['30H']}</strong></p>}
+            {loaded && <div className="assembly-next-step"><strong>下一步</strong><p>{labId === 4 && keySteps.current.length === 0 ? '按一次虚拟 P3.2，比较按键前后的 RAM 30H 计数。' : '对照上方观察提示与本次读数；可继续观察，或只修改一处代码再运行，比较变化。'}</p><button className="btn quiet" type="button" disabled={busy} onClick={focusCode}>修改代码，比较变化</button></div>}
             <details className="assembly-advanced"><summary>查看寄存器、采样条件与 HEX</summary>
             <div><strong>AS31 编译 · s51 执行</strong><button className="btn quiet" type="button" disabled={!canUseEvidence} onClick={() => download(result.hex, 'hex')}>下载 HEX</button></div>
             <p>{result.code_bytes} 字节机器码 · 已执行 {steps.toLocaleString()} 条 · 模拟时间 {(result.elapsed_seconds * 1000).toFixed(3)} ms</p>

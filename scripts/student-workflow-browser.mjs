@@ -87,8 +87,28 @@ async function main() {
   try {
     await page.goto(`${base}/?lab=4`);
     await expect(page.getByRole('button', { name: '开始实验', exact: true })).toBeVisible();
+    const assistant = page.getByRole('button', { name: '打开实验助手', exact: true });
+    await expect(assistant).toBeVisible();
+    assert.equal(await assistant.evaluate(element => getComputedStyle(element).position), 'static');
+    await assistant.click();
+    await expect(page.getByRole('dialog', { name: '实验助手', exact: true })).toBeVisible();
+    await expect(page.locator('#assistant-question')).toBeFocused();
+    for (let tab = 0; tab < 8; tab++) {
+      await page.keyboard.press('Tab');
+      assert.ok(await page.evaluate(() => Boolean(document.activeElement?.closest('#service-assistant'))), 'keyboard focus must stay inside the open assistant');
+    }
+    for (let tab = 0; tab < 8; tab++) {
+      await page.keyboard.press('Shift+Tab');
+      assert.ok(await page.evaluate(() => Boolean(document.activeElement?.closest('#service-assistant'))), 'reverse keyboard focus must stay inside the open assistant');
+    }
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: '实验助手', exact: true })).not.toBeVisible();
+    await expect(assistant).toBeFocused();
+    await page.screenshot({ path: path.join(output, 'entry-polished-390.png') });
+    passed('header help stays outside the work surface; dialog opens, traps focus and returns focus on Escape');
     await openBench();
     await expect(runButton()).toBeInViewport({ ratio: 1 });
+    assert.equal(await editor().evaluate(element => getComputedStyle(element).fontSize), '16px');
     await expect(page.locator('.assembly-advanced').first()).not.toHaveAttribute('open', '');
     await page.screenshot({ path: path.join(output, 'start-390.png') });
     passed('mobile entry exposes the primary run action without advanced controls');
@@ -117,6 +137,7 @@ async function main() {
     await key.click();
     await expect(page.getByText('已执行 2 次虚拟按键', { exact: false })).toBeVisible();
     assert.deepEqual(runs.at(-1).key_steps, [20, 45]);
+    await page.locator('.assembly-native').screenshot({ path: path.join(output, 'result-polished-390.png') });
     passed('one-click run, automatic key execution, and failure retry without duplicate key events');
     await page.locator('.assembly-advanced > summary').first().click();
     await page.getByLabel('下一次运行的采样范围').selectOption('500');
@@ -204,6 +225,7 @@ async function main() {
     await expect(page.locator('#student-observation')).toHaveValue(observation);
     await expect(page.locator('.code-input')).toHaveValue(modified);
     await expect(page.locator('.assembly-help-evidence')).toHaveCount(1);
+    await page.locator('#student-observation').click();
     await page.locator('#ask-teacher').screenshot({ path: path.join(output, 'help-draft-390.png') });
     await openBench();
     await expect(page.locator('.assembly-native')).toHaveCount(0);
@@ -213,13 +235,14 @@ async function main() {
     const helpText = await fs.readFile(await helpDownload.path(), 'utf8');
     assert.ok(helpText.includes(observation) && helpText.includes(modified));
     passed('unsubmitted help survives lab switching and refresh, with downloadable input and no restored simulation result');
-    for (const width of [390, 768, 1440]) {
+    for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `horizontal overflow at ${width}px`);
+      assert.equal(await assistant.evaluate(element => getComputedStyle(element).position), 'static');
       await page.locator('#lab-workbench').evaluate(element => element.scrollIntoView({ block: 'start' }));
       await page.screenshot({ path: path.join(output, `lab-${width}.png`) });
     }
-    passed('390 / 768 / 1440px layout fits viewport');
+    passed('320 / 390 / 768 / 1440px layout fits viewport');
     failNextSubmission = true;
     await page.getByRole('button', { name: '提交给教师求助', exact: true }).click();
     await expect(page.getByText('求助提交网络中断，请重试', { exact: true })).toBeVisible();
@@ -227,6 +250,12 @@ async function main() {
     await expect(page.locator('#student-observation')).toHaveValue(observation);
     await page.getByRole('button', { name: '提交给教师求助', exact: true }).click();
     await expect(page.getByText('TEST-0001', { exact: true })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    const headingBox = await page.locator('.student-page-head h1').boundingBox();
+    const actionsBox = await page.locator('.student-page-head .page-head-actions').boundingBox();
+    assert.ok(headingBox && actionsBox && actionsBox.y >= headingBox.y + headingBox.height, 'mobile page actions must follow the title without overlap');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'ticket page must fit mobile width');
+    await page.locator('.student-page-head').screenshot({ path: path.join(output, 'ticket-heading-390.png') });
     assert.equal(submitted.code, modified);
     assert.equal(submitted.lab_id, 4);
     assert.match(submitted.symptom, /学生提交，待教师复核/);
@@ -268,7 +297,7 @@ async function main() {
     await expect(page.locator('#student-observation')).toHaveValue('不能自动保存时，我仍然可以下载求助草稿。');
     passed('blocked browser storage provides source-download fallback without losing the editor');
     assert.deepEqual(errors, []);
-    await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ checks, api: 'fixtures only', widths: [390, 768, 1440], pageErrors: errors }, null, 2));
+    await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ checks, api: 'fixtures only', widths: [320, 390, 768, 1440], pageErrors: errors }, null, 2));
     console.log(`UI_PASS ${checks} groups; API fixtures only, no native simulator or hardware validation.`);
   } catch (error) {
     await page.screenshot({ path: path.join(output, 'failure.png'), fullPage: true }).catch(() => {});

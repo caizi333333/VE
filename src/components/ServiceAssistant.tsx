@@ -29,6 +29,15 @@ export default function ServiceAssistant() {
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { tail.current?.scrollIntoView({ block: 'nearest' }); }, [messages, busy]);
   function close() { controller.current?.abort(); setBusy(false); setOpen(false); launcher.current?.focus(); }
+  function keepFocus(event: React.KeyboardEvent<HTMLDialogElement>) {
+    if (event.key !== 'Tab') return;
+    const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')).filter(element => element.getClientRects().length > 0);
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (!first) { event.preventDefault(); return; }
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
   async function send(text: string) {
     if (controller.current || !text.trim()) return;
     const abort = new AbortController(); controller.current = abort;
@@ -45,7 +54,7 @@ export default function ServiceAssistant() {
   const suggestions = teacher ? ['如何准备一堂实验课？', '如何审核发布？', '怎样查看课堂统计？'] : ['如何加入课堂？', '一直等待教师怎么办？', '卡住后如何继续？'];
   return <>
     <button ref={launcher} className="assistant-launcher" onClick={() => setOpen(true)} aria-label="打开实验助手" aria-haspopup="dialog" aria-expanded={open} aria-controls="service-assistant"><span aria-hidden="true"><Image src={logo} alt="" width={42} height={42} sizes="42px" /></span><span>实验助手<small>需要帮助？</small></span></button>
-    <dialog ref={dialog} id="service-assistant" className="assistant-panel" aria-labelledby="assistant-title" onCancel={e => { e.preventDefault(); close(); }} onClick={e => { if (e.target === dialog.current) { const r = dialog.current.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) close(); } }}>
+    <dialog ref={dialog} id="service-assistant" className="assistant-panel" aria-labelledby="assistant-title" onKeyDown={keepFocus} onCancel={e => { e.preventDefault(); close(); }} onClick={e => { if (e.target === dialog.current) { const r = dialog.current.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) close(); } }}>
       <header className="assistant-heading"><div><span className="eyebrow">LAB COMPANION</span><h2 id="assistant-title">实验助手</h2></div><button className="btn quiet" onClick={close} aria-label="关闭实验助手">✕</button></header>
       <div className="assistant-conversation" role="log" aria-live="polite" aria-relevant="additions">
         <div className="assistant-welcome"><span className="assistant-symbol" aria-hidden="true"><Image src={logo} alt="" width={42} height={42} sizes="42px" /></span><h3>一起找到下一步。</h3><p>帮助你操作平台、理解状态。实验诊疗与评分由教师审核。</p></div>

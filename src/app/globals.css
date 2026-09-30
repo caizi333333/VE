@@ -1087,7 +1087,7 @@ h3 {
 
 /* Classroom workspace: restrained instrumentation, clear actions and responsive help. */
 .skip-link { position: fixed; top: -100px; left: 16px; z-index: 100; background: white; padding: 12px; }
-.skip-link:focus { top: 12px; }
+.skip-link:focus-visible { top: 12px; }
 .workspace-switch { margin-left: auto; display: flex; padding: 4px; gap: 4px; background: #eef1ec; border-radius: 12px; }
 .workspace-switch a { padding: 9px 16px; border-radius: 9px; font-size: 14px; color: var(--muted); white-space: nowrap; min-height: 44px; }
 .workspace-switch a[aria-current] { background: white; color: var(--ink); box-shadow: 0 2px 6px #19322a14; font-weight: 600; }
@@ -1798,3 +1798,45 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-next-step .btn { margin-top: 10px; }
 .assembly-recovery { margin: 12px 0; }
 .assembly-recovery small { display: block; margin-top: 8px; color: var(--muted); }
+
+/* Refined controls: keep help discoverable without covering classroom work. */
+.app-header .assistant-launcher { position: static; flex: none; min-height: 44px; gap: 8px; padding: 6px 12px; border-radius: 10px; box-shadow: none; font-size: 14px; font-weight: 600; }
+.app-header .assistant-launcher > span:first-child { width: 28px; height: 28px; border-radius: 7px; }
+.app-header .assistant-launcher > span:last-child { display: block; padding: 0; }
+.app-header .assistant-launcher small { display: none; }
+.app-header .workspace-switch { flex: none; }
+.assembly-panel { align-self: start; }
+.assembly-guide { background: #f0f6f1; border-color: #d5e3d8; }
+.assembly-primary-actions { padding: 12px; border: 1px solid #d5e3d8; border-radius: 12px; box-shadow: 0 3px 12px #19322a08; gap: 10px; }
+.assembly-primary-actions .btn { min-height: 46px; }
+.assembly-advanced { padding: 10px 12px; border-color: #e0e8e1; background: #fafcf9; }
+.assembly-advanced > summary { min-height: 24px; font-size: 14px; }
+.assembly-empty { padding: 20px 12px; line-height: 1.65; }
+.assembly-result-head { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.assembly-result-head > span { padding: 3px 8px; color: #365849; background: #fff; border-radius: 6px; font-size: 12px; }
+.assembly-key-readout { padding: 12px 0; border-bottom: 1px solid #bfd3c3; font-variant-numeric: tabular-nums; }
+.assembly-key-readout strong { display: inline-block; margin-left: 5px; font-size: 26px; line-height: 1.2; }
+.assembly-next-step { border-left: 3px solid #a5c5b0; }
+.assembly-native { font-variant-numeric: tabular-nums; }
+.assembly-journey { row-gap: 10px; }
+.help-draft-actions { padding: 12px 0; border-top: 1px solid #e3eae4; }
+.help-draft-actions .btn { padding-inline: 10px; }
+#ask-teacher, .assembly-editor { scroll-margin-top: 96px; }
+@media (max-width: 767px) {
+  .app-header .header-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "brand help" "nav nav"; gap: 10px; }
+  .app-header .brand { grid-area: brand; font-size: 18px; }
+  .app-header .workspace-switch { grid-area: nav; margin: 0; justify-self: stretch; }
+  .app-header .workspace-switch a { flex: 1; text-align: center; font-size: 14px; }
+  .app-header .assistant-launcher { grid-area: help; }
+  .student-page-head { padding-right: 0; }
+  .student-page-head .page-head-actions { position: static; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .student-page-head .page-head-actions .btn { min-height: 44px; }
+  .assembly-primary-actions > .btn.primary { flex: 1 1 110px; }
+  .assembly-primary-actions > .btn:not(.primary) { flex: 1 1 160px; }
+  .assembly-body { padding: 14px; }
+  .assembly-panel { padding: 12px; }
+  .assembly-debugger > summary { padding: 14px 16px; }
+  .assembly-editor textarea, .compose-form textarea, .auth-simple input, .assistant-form textarea { font-size: 16px; }
+  .assembly-evidence-actions > .btn, .help-draft-actions > .btn { width: 100%; }
+  .help-draft-actions { gap: 8px; }
+}
