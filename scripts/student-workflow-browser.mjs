@@ -31,6 +31,8 @@ async function main() {
   page.on('pageerror', error => errors.push(error.message));
   let learner = 'student-a';
   let failNextRun = false;
+  let holdNextRun = false;
+  let releaseRun;
   let failNextSubmission = false;
   const submissionKeys = [];
   const runs = [];
@@ -51,6 +53,7 @@ async function main() {
     if (pathname === '/api/assembly') {
       const p = request.postDataJSON();
       runs.push(p);
+      if (holdNextRun) { holdNextRun = false; await new Promise(resolve => { releaseRun = resolve; }); }
       if (failNextRun) { failNextRun = false; return json(route, { error: '测试服务暂不可用，请重试' }, 503); }
       if (p.code.includes('SERVER_FAIL')) return json(route, { error: '测试汇编失败' }, 422);
       const count = p.key_steps.length;
@@ -90,14 +93,24 @@ async function main() {
     await page.screenshot({ path: path.join(output, 'start-390.png') });
     passed('mobile entry exposes the primary run action without advanced controls');
     const original = await editor().inputValue();
+    holdNextRun = true;
     await runButton().click();
+    await expect(page.locator('.assembly-wait')).toContainText('已等待 1 秒');
+    await expect(page.getByRole('button', { name: '正在运行…', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '下载当前源码', exact: true })).toBeEnabled();
+    assert.equal(runs.length, 1);
+    await page.screenshot({ path: path.join(output, 'waiting-390.png') });
+    releaseRun();
     await expect(transfer()).toBeEnabled();
+    await expect(page.locator('.assembly-wait')).toHaveCount(0);
+    await expect(page.locator('.assembly-next-step')).toContainText('按一次虚拟 P3.2');
+    passed('actual wait time, locked repeat actions, source-download fallback and next-step guidance');
     assert.equal(runs.at(-1).steps, 20);
     failNextRun = true;
     const key = page.getByRole('button', { name: /按一次 P3.2/ });
     await key.click();
     await expect(page.getByText('测试服务暂不可用，请重试', { exact: true })).toBeVisible();
-    await key.click();
+    await page.getByRole('button', { name: '重试本次按键', exact: true }).click();
     await expect(page.getByText('已执行 1 次虚拟按键', { exact: false })).toBeVisible();
     assert.deepEqual(runs.at(-1).key_steps, [20]);
     assert.equal(runs.at(-1).steps, 45);
@@ -139,6 +152,29 @@ async function main() {
     await runButton().click();
     await expect(page.getByText('测试汇编失败', { exact: true })).toBeVisible();
     await expect(page.locator('.assembly-native')).toHaveCount(0);
+    await page.locator('.assembly-advanced > summary').first().click();
+    await page.getByLabel('晶振条件').selectOption('11059200');
+    await expect(page.getByRole('button', { name: '重试本次运行', exact: true })).toHaveCount(0);
+    await page.getByLabel('晶振条件').selectOption('12000000');
+    await runButton().click();
+    await expect(page.getByText('测试汇编失败', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '检查代码', exact: true }).click();
+    await expect(editor()).toBeFocused();
+    await page.getByRole('button', { name: '重试本次运行', exact: true }).click();
+    await expect(page.getByText('测试汇编失败', { exact: true })).toBeVisible();
+    const failedSource = await editor().inputValue();
+    page.once('dialog', dialog => dialog.dismiss());
+    await page.getByRole('button', { name: '恢复当前版本示例', exact: true }).click();
+    await expect(editor()).toHaveValue(failedSource);
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('button', { name: '恢复当前版本示例', exact: true }).click();
+    await expect(editor()).toHaveValue(original);
+    await expect(page.locator('.assembly-native')).toHaveCount(0);
+    await editor().press('Control+Enter');
+    await expect(transfer()).toBeEnabled();
+    await page.getByRole('button', { name: '修改代码，比较变化', exact: true }).click();
+    await expect(editor()).toBeFocused();
+    passed('error recovery focuses the editor, safe example restore and keyboard run preserve result consistency');
     await editor().fill(modified);
     await runButton().click();
     await expect(transfer()).toBeEnabled();
