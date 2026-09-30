@@ -29,6 +29,7 @@ export default function RootLayout({
               微控制器原理及应用技术 · 实验工作区
             </span>
             <WorkspaceNav />
+            <ServiceAssistant />
           </div>
         </header>
         <main id="main-content" className="app-main">
@@ -40,7 +41,6 @@ export default function RootLayout({
             　｜　技术结论以已确认的实验参数与实际验证为依据
           </span>
         </footer>
-        <ServiceAssistant />
       </body>
     </html>
   );
