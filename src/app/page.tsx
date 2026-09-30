@@ -482,18 +482,18 @@ export default function StudentPage() {
         </p>
       )}
       {!ticket && !revision && <section className="student-guide-workspace" aria-label="八个实验指导">
-        <div className="guide-intro"><div><span className="eyebrow">实验学习路线 / 1—8</span><h2>选择本节课的实验，开始动手</h2><p>运行示例 → 修改代码、观察变化 → 带着问题向教师求助。实验顺序以任课教师安排为准。</p></div><span className="guide-source">8 项原报告实验<span className="guide-swipe-hint"> · 左右滑动切换</span></span></div>
+        <div className="guide-intro"><h2>选择本节课的实验</h2><span className="guide-source">按教师安排选择<span className="guide-swipe-hint"> · 左右滑动切换</span></span></div>
         <div className="lab-nav" ref={labNav} role="group" aria-label="八个实验的报告顺序，切换不代表完成">
           {LAB_GUIDES.map(lab => <button key={lab.id} data-lab-id={lab.id} type="button" className={`lab-nav-item ${labId === lab.id ? "active" : ""}`} aria-pressed={labId === lab.id} onClick={() => selectLab(lab.id)}><span>{String(lab.id).padStart(2, "0")}</span><strong>{lab.title}</strong></button>)}
         </div>
         {guide && <article className="lab-overview" id="lab-guide" key={guide.id}>
-          <div className="lab-overview-main"><div className="lab-overview-copy"><span className="eyebrow">第 {guide.id} / 8 个实验</span><h2>{LAB_REPORT_TITLES[guide.id]}</h2><p className="lab-goal"><strong>本次目标：</strong>{guide.goal}</p><p className="lab-assignment"><strong>报告任务：</strong>{guide.task}</p><div className="lab-overview-actions"><button className="btn primary" type="button" onClick={openBench}>{hasDraft || benchOpen ? "继续实验" : "开始实验"}</button><a className="btn quiet" href="#lab-steps" onClick={() => { const details = document.getElementById("lab-steps") as HTMLDetailsElement | null; if (details) details.open = true; }}>实物接线与准备</a><a className="btn quiet" href="#ask-teacher">向教师求助</a></div><p className="muted">可先运行虚拟示例。操作实物前，请按下方实验准备核对本班器材与接线。</p></div><LabVisual labId={guide.id} /></div>
+          <div className="lab-overview-main"><div className="lab-overview-copy"><span className="eyebrow">当前实验 · {String(guide.id).padStart(2, "0")} / 08</span><h2>{LAB_REPORT_TITLES[guide.id]}</h2><p className="lab-goal">{guide.goal}</p><div className="lab-observation-focus"><span>本次要记录</span><strong>{guide.observations.join("；")}</strong></div><div className="lab-overview-actions"><button className="btn primary" type="button" onClick={openBench}>{hasDraft || benchOpen ? "继续实验" : "开始实验"}</button><a className="btn quiet" href="#lab-steps" onClick={() => { const details = document.getElementById("lab-steps") as HTMLDetailsElement | null; if (details) details.open = true; }}>实物接线与准备</a><a className="btn quiet" href="#ask-teacher">向教师求助</a></div><p className="muted">先运行虚拟示例，再修改与对照。操作实物前须核对本班器材与接线。</p></div><LabVisual labId={guide.id} /></div>
           <AssemblyDebugger key={`${learnerScope}:${guide.id}`} labId={guide.id} learnerScope={learnerScope} expanded={benchOpen} onExpandedChange={setBenchOpen} onAskTeacher={askWithAssembly} />
           <details className="lab-instructions" id="lab-steps"><summary>实验准备、课程原理与验证要求</summary>
           <div className="lab-guide-columns">
             <section><span>01 / 对应课程知识</span><h3>{guide.ppt}</h3><p>{LAB_PPT_NOTES[guide.id]}</p></section>
             <section><span>02 / 实验准备</span><h3>先核对器件与条件</h3><ul>{guide.wiring.map(v => <li key={v}>{v}</li>)}</ul></section>
-            <section><span>03 / 编写与运行</span><h3>按报告完成程序</h3><ul>{guide.code.map(v => <li key={v}>{v}</li>)}</ul></section>
+            <section><span>03 / 编写与运行</span><h3>按报告完成程序</h3><p><strong>报告任务：</strong>{guide.task}</p><ul>{guide.code.map(v => <li key={v}>{v}</li>)}</ul></section>
             <section><span>04 / 观察与验证</span><h3>用实际结果核对</h3><ul>{guide.resultChecks.map(v => <li key={v}>{v}</li>)}</ul><p><strong>记录：</strong>{guide.observations.join("；")}</p></section>
           </div>
           <a className="btn quiet" href="/api/materials/original">下载原始八实验报告</a>

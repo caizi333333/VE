@@ -1,4 +1,5 @@
 /** Shared contracts: student responses contain approved content only. */
+import type { LabCodeAnalysis } from './lab-code-checks';
 export type FaultId = 'timer-isr-not-entered' | 'uart-garbled' | 'timing-inaccurate';
 export type DataSource = 'demo' | 'test' | 'classroom' | 'legacy_unknown';
 export interface ConstraintEdgeView { from_id: string; to_id: string; reason: string | null }
@@ -32,7 +33,7 @@ export interface TeacherDiagnosisView {
   id: string; ticket: string; status: string; version: number; round: number; published_version: number | null;
   created_at: string; classroom_id: string | null; experiment_id: string | null; experiment_name: string;
   learner_number: string; bench_label: string; data_source: string; symptom: string; code: string;
-  classification: string; review_notes: string[]; checkpoints: Checkpoint[]; bridging_task: string;
+  classification: string; review_notes: string[]; checkpoints: Checkpoint[]; bridging_task: string; code_analysis?: LabCodeAnalysis;
   tasks: PracticeTaskView[]; assessments: Assessment[]; ai_assessments: Assessment[]; rubric: RubricItem[];
   comment: string; original: { checkpoints: Checkpoint[]; bridging_task: string };
   attempts: AttemptView[]; revisions: { version: number; action: string; created_at: string; payload: unknown }[];

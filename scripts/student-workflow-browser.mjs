@@ -87,6 +87,16 @@ async function main() {
   try {
     await page.goto(`${base}/?lab=4`);
     await expect(page.getByRole('button', { name: '开始实验', exact: true })).toBeVisible();
+    await expect(page.locator('.lab-observation-focus')).toContainText('一次按下对应的计数变化');
+    await expect(page.locator('.lab-overview-copy')).not.toContainText('报告任务');
+    await expect(page.locator('#lab-steps')).not.toHaveAttribute('open', '');
+    await page.getByRole('link', { name: '实物接线与准备', exact: true }).click();
+    await expect(page.locator('#lab-steps')).toHaveAttribute('open', '');
+    await expect(page.locator('#lab-steps')).toContainText('报告任务：');
+    await expect(page.locator('#lab-steps')).toContainText('项目开发指定 P3.2 接按键 K');
+    await page.locator('#lab-steps > summary').click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    passed('home prioritizes the current observation and preserves full report requirements in preparation');
     const assistant = page.getByRole('button', { name: '打开实验助手', exact: true });
     await expect(assistant).toBeVisible();
     assert.equal(await assistant.evaluate(element => getComputedStyle(element).position), 'static');

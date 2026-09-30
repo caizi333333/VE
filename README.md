@@ -37,6 +37,8 @@ npm start
 
 这是**通过 Cloudflare 域名访问本机服务的远程试用**，不是把数据库和后端迁移到 Cloudflare Workers。电脑关机、睡眠或离线时网站不可用；第二个 Cloudflare 账号目前未在本机登录，尚无第二处部署。进入真实课堂前，还需核对实验设备、资料发布状态、备份与学校网络及数据要求。
 
+现有 Mac 服务可用 `bash scripts/deploy-macos.sh <已验证的完整主分支SHA>` 更新。脚本从启动项读取项目及构建目录，要求干净的 `main`、指定提交属于远程主分支、运行依赖未变化；依赖变化时在停机前退出。构建期间有短暂不可用，成功后检查本机健康接口，失败时尝试恢复旧构建并保留失败构建；回退不回退源代码。脚本不迁移或初始化数据库，不改 `.env.local`，不重启隧道。首次取得脚本可通过 `git show <完整SHA>:scripts/deploy-macos.sh` 导出；GitHub 合并和镜像发布仍不等于本机更新。
+
 ### 独立常开服务器迁移（准备中）
 
 仓库提供 `Dockerfile` 与 `compose.yaml`，在单台 Linux 服务器上运行一个 Next.js 实例、持久化 SQLite 和真实 AS31／s51 工具链。服务器需安装 Docker Engine、Compose 插件，确保能连接 GitHub、npm、Debian 软件源和 Docker Hub。推荐至少 2 vCPU、4 GB 内存；这只是首轮容量配置，必须在目标机测量。`compose.yaml` 仅把应用端口绑定到服务器的 `127.0.0.1:3100`；外网路由应由该服务器的独立 Cloudflare Tunnel 转发，不能直接开放数据库或改动其他站点。
