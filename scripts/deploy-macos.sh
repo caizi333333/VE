@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Update the existing single-instance Mac service; preserve local data and old build.
 set -euo pipefail
-export PATH="/opt/homebrew/bin:$PATH"
+# VE_DEPLOY_PATH_PREFIX lets the test suite shadow git/npm/curl with mocks; unset means Homebrew first.
+export PATH="${VE_DEPLOY_PATH_PREFIX:-/opt/homebrew/bin}:$PATH"
 if [ "$(uname -s)" != Darwin ]; then
   echo '此脚本仅用于现有 macOS LaunchAgent 服务。' >&2
   exit 1

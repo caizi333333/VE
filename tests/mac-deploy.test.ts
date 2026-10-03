@@ -33,7 +33,7 @@ async function scenario(mode: string) {
   for (const [name, command] of Object.entries(commands)) await writeFile(join(bin, name), `#!/bin/bash\nset -eu\n${command}\n`, { mode: 0o700 });
   try {
     const run = spawnSync('bash', [resolve('scripts/deploy-macos.sh'), 'a'.repeat(40)], {
-      encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: root, VE_DEPLOY_PLIST: join(root, 'mock.plist'), VE_TEST_ROOT: root, VE_TEST_MODE: mode },
+      encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: root, VE_DEPLOY_PLIST: join(root, 'mock.plist'), VE_DEPLOY_PATH_PREFIX: bin, VE_TEST_ROOT: root, VE_TEST_MODE: mode },
     });
     assert.equal(run.error, undefined);
     const marker = (await readFile(join(app, '.next-final', 'marker'), 'utf8')).trim();
