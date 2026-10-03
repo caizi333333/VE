@@ -1499,6 +1499,20 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .lab-guide-more summary { cursor: pointer; padding: 16px 0; font-weight: 700; }
 .lab-guide-more > div { max-width: 850px; padding: 0 0 19px; font-size: 14px; line-height: 1.7; }
 .lab-guide-more p { margin: 8px 0; }
+.lab-graph { border-top: 1px solid #e1e8e0; padding: 0 26px; color: #365241; }
+.lab-graph summary { cursor: pointer; padding: 16px 0; font-weight: 700; }
+.lab-graph-body { max-width: 850px; padding: 0 0 19px; font-size: 14px; line-height: 1.7; }
+.lab-graph-anchor { display: grid; gap: 4px; padding: 12px 15px; border: 1px solid #d6e4d5; border-radius: 10px; background: #f6faf5; }
+.lab-graph-anchor strong { color: #1e4935; font-size: 15px; }
+.lab-graph-anchor p { margin: 2px 0 0; color: #486050; }
+.lab-graph-prereqs { margin-top: 12px; }
+.lab-graph-prereqs > span { color: #53715d; font-size: 13px; font-weight: 700; }
+.lab-graph-prereqs ul { margin: 8px 0 0; padding-left: 19px; }
+.lab-graph-prereqs li { color: #3b5343; }
+.lab-graph-prereqs li + li { margin-top: 6px; }
+.lab-graph-prereqs p { margin: 2px 0 0; }
+.lab-graph-chains { margin: 12px 0 0; padding: 11px 14px; border-left: 3px solid #a66d3d; background: #fffdf6; color: #5d4a2e; }
+.lab-graph-body > .muted, .lab-graph-source { margin: 10px 0 0; font-size: 13px; }
 .lab-sequence-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 26px; border-top: 1px solid #dfe8df; color: #526a57; font-size: 14px; }
 .lab-sequence-footer > div { display: flex; flex-wrap: wrap; gap: 8px; }
 .lab-sequence-footer .btn { min-height: 44px; }

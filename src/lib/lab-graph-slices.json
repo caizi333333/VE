@@ -1,0 +1,158 @@
+{
+  "generated_from": {
+    "kg_source": "EduCog-Micro/src/lib/knowledge-points.ts",
+    "points": 279,
+    "prerequisite_edges": 202,
+    "exported_at": "2026-09-18T23:49:10.350Z"
+  },
+  "labs": {
+    "1": {
+      "anchor": {
+        "id": "3.2.3",
+        "name": "程序存储器传送（MOVC）",
+        "chapter": 3,
+        "description": "MOVC查表指令读取ROM中的常数数据"
+      },
+      "prerequisites": [
+        {
+          "id": "3.1.5",
+          "name": "变址寻址",
+          "reason": "MOVC 用 @A+DPTR 变址查表"
+        }
+      ],
+      "chains": [],
+      "note": "本实验暂无对应故障专项；求助进入教师待办，按所选方向生成检查点草稿，教师复核后下发。"
+    },
+    "2": {
+      "anchor": {
+        "id": "3.5.2",
+        "name": "条件转移（JZ/JNZ/CJNE/DJNZ）",
+        "chapter": 3,
+        "description": "零判断、比较不等转移、减1不为零转移"
+      },
+      "prerequisites": [],
+      "chains": [],
+      "note": "本实验暂无对应故障专项；求助进入教师待办，按所选方向生成检查点草稿，教师复核后下发。"
+    },
+    "3": {
+      "anchor": {
+        "id": "6.3.2",
+        "name": "方波产生",
+        "chapter": 6,
+        "description": "定时器中断翻转I/O口产生指定频率方波"
+      },
+      "prerequisites": [
+        {
+          "id": "6.3.1",
+          "name": "精确延时",
+          "reason": "半周期定时翻转 I/O 即方波，建立在精确延时之上"
+        }
+      ],
+      "chains": [
+        {
+          "id": "timer-isr-not-entered",
+          "name": "定时器中断不触发"
+        },
+        {
+          "id": "timing-inaccurate",
+          "name": "定时不准"
+        }
+      ],
+      "note": null
+    },
+    "4": {
+      "anchor": {
+        "id": "5.3.3",
+        "name": "外部中断应用（按键中断）",
+        "chapter": 5,
+        "description": "外部中断实现按键检测的电路与程序设计"
+      },
+      "prerequisites": [],
+      "chains": [],
+      "note": "本实验是外部中断 INT0（P3.2 按键）；平台“定时器中断不触发”专项只针对 T0，不会把 INT0 误判成定时中断。本实验求助仍走教师人工复核。"
+    },
+    "5": {
+      "anchor": {
+        "id": "8.1.2",
+        "name": "动态显示与静态显示",
+        "chapter": 8,
+        "description": "静态锁存显示和动态扫描显示的原理与比较"
+      },
+      "prerequisites": [
+        {
+          "id": "8.1.1",
+          "name": "LED数码管（共阴/共阳）",
+          "reason": "动态扫描建立在数码管段码/驱动电路认知之上"
+        },
+        {
+          "id": "6.3.1",
+          "name": "精确延时",
+          "reason": "动态扫描 = 逐位点亮 + 每位停留 1-2ms 的定时"
+        }
+      ],
+      "chains": [
+        {
+          "id": "timing-inaccurate",
+          "name": "定时不准"
+        }
+      ],
+      "note": null
+    },
+    "6": {
+      "anchor": {
+        "id": "8.6.1",
+        "name": "有源与无源蜂鸣器驱动",
+        "chapter": 8,
+        "description": "有源蜂鸣器内置振荡源、加电即响；无源蜂鸣器需外部方波激励定音高，两者均经三极管放大驱动"
+      },
+      "prerequisites": [
+        {
+          "id": "6.3.2",
+          "name": "方波产生",
+          "reason": "无源蜂鸣器音高由定时器方波频率决定，有源蜂鸣器只需通断控制"
+        }
+      ],
+      "chains": [],
+      "note": "本实验暂无对应故障专项；求助进入教师待办，按所选方向生成检查点草稿，教师复核后下发。"
+    },
+    "7": {
+      "anchor": {
+        "id": "6.3.5",
+        "name": "长定时实现",
+        "chapter": 6,
+        "description": "通过软件计数器扩展定时范围实现秒级定时"
+      },
+      "prerequisites": [
+        {
+          "id": "6.3.1",
+          "name": "精确延时",
+          "reason": "软件计数器扩展 65ms 上限得到秒级定时，仍以精确延时为基础"
+        }
+      ],
+      "chains": [
+        {
+          "id": "timing-inaccurate",
+          "name": "定时不准"
+        }
+      ],
+      "note": null
+    },
+    "8": {
+      "anchor": {
+        "id": "8.5.2",
+        "name": "步进电机驱动",
+        "chapter": 8,
+        "description": "步进电机的相序控制（全步/半步）与ULN2003驱动"
+      },
+      "prerequisites": [
+        {
+          "id": "6.3.1",
+          "name": "精确延时",
+          "reason": "步进电机转速由相序节拍间隔（延时）决定"
+        }
+      ],
+      "chains": [],
+      "note": "本实验暂无对应故障专项；求助进入教师待办，按所选方向生成检查点草稿，教师复核后下发。"
+    }
+  }
+}

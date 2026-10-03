@@ -14,6 +14,7 @@ import AssemblyDebugger from "@/components/AssemblyDebugger";
 import { prepareAssemblyHelp, type AssemblyRun } from "@/lib/assembly-workflow";
 import { clearHelpDraft, clearLabDrafts, readHelpDraft, readLabDraft, readLastLab, readLastTicket, saveHelpDraft, saveLastLab, saveLastTicket } from "@/lib/lab-drafts";
 import { coursewareForLab } from "@/lib/courseware";
+import LabGraphBlock from "@/components/LabGraphBlock";
 import type {
   SessionView,
   ExperimentView,
@@ -500,6 +501,7 @@ export default function StudentPage() {
           </details>
           <div className="lab-after-steps"><div><strong>遇到问题？</strong><p>先按上面的顺序检查，再写下实际现象；教师复核后给出针对本实验的指导。</p></div><a className="btn primary" href="#ask-teacher">向教师求助</a></div>
           <details className="lab-guide-more"><summary>查看本实验应保留的材料与板卡参考照片</summary><div><p><strong>资料准备：</strong>{guide.evidence}</p><a href={`/api/lab-help?lab=${guide.id}`} className="btn quiet">下载本实验核对单</a><figure className="board-reference"><a href="/prechin6-board-reference.jpg" target="_blank" rel="noopener noreferrer"><Image src="/prechin6-board-reference.jpg" alt="普中-6 V1.2 手册中的开发板各功能模块照片" width={1227} height={894} /></a><figcaption>厂家手册第 3.1 节开发板功能示意照片；仅供辨认模块，不代表本班实际板型、接线或实验结果。</figcaption></figure></div></details>
+          <LabGraphBlock labId={guide.id} />
           {coursewareForLab(guide.id).length > 0 && <div className="lab-courseware"><div><span className="eyebrow">可选 / 配套原理课件</span><h3>需要理解原理时再打开</h3></div><div>{coursewareForLab(guide.id).map(item => <Link key={item.slug} href={`/courseware/${item.slug}`}>{item.title}<span aria-hidden="true">↗</span></Link>)}</div></div>}
           <MaterialLibrary classroomId={session.learner.classroom_id} labId={guide.id} />
           <div className="lab-sequence-footer"><span>实验顺序 {guide.id} / 8 · 切换只用于查看，不表示实验完成</span><div>{guide.id > 1 && <button type="button" className="btn quiet" onClick={() => selectLab(guide.id - 1)}>← 上一个实验</button>}{guide.id < 8 && <button type="button" className="btn" onClick={() => selectLab(guide.id + 1)}>查看下一个实验 →</button>}</div></div>

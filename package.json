@@ -13,6 +13,7 @@
     "lint": "eslint src scripts tests --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "export:kg": "tsx scripts/export-kg.ts",
+    "build:lab-graph": "tsx scripts/build-lab-graph.ts",
     "check:kg": "tsx scripts/check-kg.ts",
     "demo:constraint": "tsx scripts/demo-constraint.ts",
     "demo:diagnose": "tsx scripts/demo-diagnose.ts",

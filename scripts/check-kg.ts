@@ -9,7 +9,9 @@ import { FAULT_CHAINS, matchFaultChains } from '../src/lib/fault-chains';
 import { redactSubmission } from '../src/lib/redact';
 import { retrieveConstraint } from '../src/lib/retrieval';
 import { parseDiagnosis } from '../src/lib/prompt';
+import { validateLabGraphSlices, type LabGraphSlices } from '../src/lib/lab-graph';
 import kg_data from '../data/kg-8051.json';
+import lab_graph_slices from '../src/lib/lab-graph-slices.json';
 
 interface CheckResult {
   name: string;
@@ -131,6 +133,16 @@ record(
   '检查点编号去括号',
   point_id_normalized,
   point_id_normalized ? '[5.2.2] 已归一成 5.2.2' : '方括号编号仍被判越界',
+);
+
+// 7. 实验页图谱切片：与源图谱、lab-guides 锚点和故障链库一致且为最新生成
+const slice_problems = validateLabGraphSlices(lab_graph_slices as LabGraphSlices);
+record(
+  '实验图谱切片与源图谱一致',
+  slice_problems.length === 0,
+  slice_problems.length === 0
+    ? '八个实验切片全部与源图谱一致'
+    : slice_problems.join('；'),
 );
 
 for (const result of results) {
