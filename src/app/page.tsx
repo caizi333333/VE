@@ -15,6 +15,7 @@ import { prepareAssemblyHelp, type AssemblyRun } from "@/lib/assembly-workflow";
 import { clearHelpDraft, clearLabDrafts, readHelpDraft, readLabDraft, readLastLab, readLastTicket, saveHelpDraft, saveLastLab, saveLastTicket } from "@/lib/lab-drafts";
 import { coursewareForLab } from "@/lib/courseware";
 import LabGraphBlock from "@/components/LabGraphBlock";
+import LabPresenter from "@/components/LabPresenter";
 import type {
   SessionView,
   ExperimentView,
@@ -58,6 +59,7 @@ export default function StudentPage() {
   const [requestKey, setRequestKey] = useState("");
   const [restoredHelp, setRestoredHelp] = useState("");
   const [helpDraftStatus, setHelpDraftStatus] = useState("");
+  const [presenterOpen, setPresenterOpen] = useState(false);
   const recognition = useRef<{ start: () => void; stop: () => void } | null>(null);
   const labNav = useRef<HTMLDivElement | null>(null);
   const guide = labGuide(labId);
@@ -488,7 +490,7 @@ export default function StudentPage() {
           {LAB_GUIDES.map(lab => <button key={lab.id} data-lab-id={lab.id} type="button" className={`lab-nav-item ${labId === lab.id ? "active" : ""}`} aria-pressed={labId === lab.id} onClick={() => selectLab(lab.id)}><span>{String(lab.id).padStart(2, "0")}</span><strong>{lab.title}</strong></button>)}
         </div>
         {guide && <article className="lab-overview" id="lab-guide" key={guide.id}>
-          <div className="lab-overview-main"><div className="lab-overview-copy"><span className="eyebrow">当前实验 · {String(guide.id).padStart(2, "0")} / 08</span><h2>{LAB_REPORT_TITLES[guide.id]}</h2><p className="lab-goal">{guide.goal}</p><div className="lab-observation-focus"><span>本次要记录</span><strong>{guide.observations.join("；")}</strong></div><div className="lab-overview-actions"><button className="btn primary" type="button" onClick={openBench}>{hasDraft || benchOpen ? "继续实验" : "开始实验"}</button><a className="btn quiet" href="#lab-steps" onClick={() => { const details = document.getElementById("lab-steps") as HTMLDetailsElement | null; if (details) details.open = true; }}>实物接线与准备</a><a className="btn quiet" href="#ask-teacher">向教师求助</a></div><p className="muted">先运行虚拟示例，再修改与对照。操作实物前须核对本班器材与接线。</p></div><LabVisual labId={guide.id} /></div>
+          <div className="lab-overview-main"><div className="lab-overview-copy"><span className="eyebrow">当前实验 · {String(guide.id).padStart(2, "0")} / 08</span><h2>{LAB_REPORT_TITLES[guide.id]}</h2><p className="lab-goal">{guide.goal}</p><div className="lab-observation-focus"><span>本次要记录</span><strong>{guide.observations.join("；")}</strong></div><div className="lab-overview-actions"><button className="btn primary" type="button" onClick={openBench}>{hasDraft || benchOpen ? "继续实验" : "开始实验"}</button><a className="btn quiet" href="#lab-steps" onClick={() => { const details = document.getElementById("lab-steps") as HTMLDetailsElement | null; if (details) details.open = true; }}>实物接线与准备</a><a className="btn quiet" href="#ask-teacher">向教师求助</a><button className="btn quiet" type="button" onClick={() => setPresenterOpen(true)}>课堂演示</button></div><p className="muted">先运行虚拟示例，再修改与对照。操作实物前须核对本班器材与接线。</p></div><LabVisual labId={guide.id} /></div>
           <AssemblyDebugger key={`${learnerScope}:${guide.id}`} labId={guide.id} learnerScope={learnerScope} expanded={benchOpen} onExpandedChange={setBenchOpen} onAskTeacher={askWithAssembly} />
           <details className="lab-instructions" id="lab-steps"><summary>实验准备、课程原理与验证要求</summary>
           <div className="lab-guide-columns">
@@ -502,6 +504,7 @@ export default function StudentPage() {
           <div className="lab-after-steps"><div><strong>遇到问题？</strong><p>先按上面的顺序检查，再写下实际现象；教师复核后给出针对本实验的指导。</p></div><a className="btn primary" href="#ask-teacher">向教师求助</a></div>
           <details className="lab-guide-more"><summary>查看本实验应保留的材料与板卡参考照片</summary><div><p><strong>资料准备：</strong>{guide.evidence}</p><a href={`/api/lab-help?lab=${guide.id}`} className="btn quiet">下载本实验核对单</a><figure className="board-reference"><a href="/prechin6-board-reference.jpg" target="_blank" rel="noopener noreferrer"><Image src="/prechin6-board-reference.jpg" alt="普中-6 V1.2 手册中的开发板各功能模块照片" width={1227} height={894} /></a><figcaption>厂家手册第 3.1 节开发板功能示意照片；仅供辨认模块，不代表本班实际板型、接线或实验结果。</figcaption></figure></div></details>
           <LabGraphBlock labId={guide.id} />
+          {presenterOpen && <LabPresenter labId={guide.id} onClose={() => setPresenterOpen(false)} />}
           {coursewareForLab(guide.id).length > 0 && <div className="lab-courseware"><div><span className="eyebrow">可选 / 配套原理课件</span><h3>需要理解原理时再打开</h3></div><div>{coursewareForLab(guide.id).map(item => <Link key={item.slug} href={`/courseware/${item.slug}`}>{item.title}<span aria-hidden="true">↗</span></Link>)}</div></div>}
           <MaterialLibrary classroomId={session.learner.classroom_id} labId={guide.id} />
           <div className="lab-sequence-footer"><span>实验顺序 {guide.id} / 8 · 切换只用于查看，不表示实验完成</span><div>{guide.id > 1 && <button type="button" className="btn quiet" onClick={() => selectLab(guide.id - 1)}>← 上一个实验</button>}{guide.id < 8 && <button type="button" className="btn" onClick={() => selectLab(guide.id + 1)}>查看下一个实验 →</button>}</div></div>
