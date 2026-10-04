@@ -391,6 +391,7 @@ export default function TeacherPage() {
                 onPage={setPage}
                 onRefresh={loadData}
                 onDirtyChange={setDirty}
+                onGoClassroom={() => setTab("classroom")}
               />
             ) : (
               <div className="loading" role="status">

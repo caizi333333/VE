@@ -1463,6 +1463,7 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .lab-nav-item strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; }
 .lab-nav-item:hover { background: #f1f7ef; transform: translateY(-2px); }
 .lab-nav-item.active { border-color: #2d7052; background: #e9f3e9; color: #164e36; box-shadow: inset 0 0 0 1px #2d7052; }
+.lab-nav-item:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .specialty-entry { margin: 15px 0 0; color: #53715d; font-size: 14px; }
 .specialty-entry summary { cursor: pointer; width: fit-content; }
 .specialty-entry .btn { margin-top: 8px; }

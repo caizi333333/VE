@@ -21,6 +21,7 @@ export default function ReviewList({
   onRefresh,
   teacherName,
   onDirtyChange,
+  onGoClassroom,
 }: {
   data: TeacherListView;
   primaryQueue: boolean;
@@ -28,6 +29,7 @@ export default function ReviewList({
   onRefresh: () => Promise<void>;
   teacherName: string;
   onDirtyChange: (dirty: boolean) => void;
+  onGoClassroom?: () => void;
 }) {
   const [selected, setSelected] = useState("");
   const detailRef = useRef<HTMLDivElement>(null);
@@ -161,6 +163,7 @@ export default function ReviewList({
             await onRefresh();
           }}
           onDirty={setDirty}
+          onGoClassroom={onGoClassroom}
         />
       </div>
     </div>
@@ -171,11 +174,13 @@ function ReviewEditor({
   onSaved,
   onDirty,
   teacherName,
+  onGoClassroom,
 }: {
   item: TeacherDiagnosisView;
   onSaved: () => Promise<void>;
   onDirty: (dirty: boolean) => void;
   teacherName: string;
+  onGoClassroom?: () => void;
 }) {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>(
     item.checkpoints,
@@ -693,6 +698,11 @@ function ReviewEditor({
         {error && (
           <p className="notice error" role="alert" style={{ marginBottom: 12 }}>
             {error}
+            {error.includes("实验配置未确认") && onGoClassroom && (
+              <button className="btn quiet" onClick={onGoClassroom}>
+                前往班级设置确认实验配置
+              </button>
+            )}
             <button className="btn quiet" onClick={() => void onSaved()}>
               重新载入最新版本
             </button>
