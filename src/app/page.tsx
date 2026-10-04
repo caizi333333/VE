@@ -127,11 +127,7 @@ export default function StudentPage() {
     if (!def || prepBusy) return;
     setPrepBusy(true); setPrepMsg("");
     try {
-      const res = await api<{ ok: boolean; prep: PrepView | null }>("/api/prep", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lab_id: labId, courseware_done: prepChecks.courseware, example_done: prepChecks.example, answers: def.questions.map((q) => ({ id: q.id, answer: prepAnswers[q.id] ?? "" })) }),
-      });
+      const res = await api<{ ok: boolean; prep: PrepView | null }>("/api/prep", { lab_id: labId, courseware_done: prepChecks.courseware, example_done: prepChecks.example, answers: def.questions.map((q) => ({ id: q.id, answer: prepAnswers[q.id] ?? "" })) });
       if (res.prep) setPrep(res.prep);
       setPrepMsg("已提交预习回执，教师可在课堂记录看到。");
     } catch (err) { setPrepMsg(errorText(err)); }
