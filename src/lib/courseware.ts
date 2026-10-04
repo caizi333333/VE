@@ -5,6 +5,8 @@ export const COURSEWARE = [
   { slug: 'port', number: '04', title: '端口与流水灯', subtitle: '位序、极性和显示顺序', source: '实验二：流水灯；第二章并行 I/O 课件', relatedLabs: [2], question: '端口写入后，哪一盏灯应亮？' },
   { slug: 'scan', number: '05', title: '八位数码管扫描', subtitle: '逐位选通与整屏刷新', source: '实验五、实验七；第九章人机接口课件', relatedLabs: [5, 7], question: '单个位的停留时间与整屏周期有什么区别？' },
   { slug: 'pwm', number: '06', title: 'PWM 与步进相序', subtitle: '占空比与驱动匹配核对', source: '实验八：电机控制；系统开发课件版本待教师确认', relatedLabs: [8], question: '0.3 与 0.7 占空比如何体现在控制信号上？' },
+  { slug: 'isa', number: '07', title: '指令执行与堆栈透视', subtitle: '寻址方式、压栈出栈与现场恢复', source: '实验一：指令系统；第三章指令系统课件', relatedLabs: [1], question: 'POP 的顺序为什么必须和 PUSH 相反？' },
+  { slug: 'buzzer', number: '08', title: '蜂鸣器：节奏与音高', subtitle: '有源/无源驱动与翻转信号', source: '实验六：蜂鸣器控制；第九章人机接口课件', relatedLabs: [6], question: '同一个翻转程序，有源和无源蜂鸣器听起来一样吗？' },
 ] as const;
 
 export type CoursewareSlug = typeof COURSEWARE[number]['slug'];

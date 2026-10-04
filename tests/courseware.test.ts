@@ -3,15 +3,15 @@ import test from 'node:test';
 import { COURSEWARE, coursewareForLab } from '../src/lib/courseware';
 import { labGuide, LAB_GUIDES, LAB_PPT_NOTES, LAB_REPORT_TITLES } from '../src/lib/lab-guides';
 
-test('six distinct courseware pages cover proposal topics and the linked experiments', () => {
-  assert.equal(COURSEWARE.length, 6);
-  assert.equal(new Set(COURSEWARE.map(item => item.slug)).size, 6);
-  for (const topic of ['interrupt', 'timer', 'serial']) assert.ok(COURSEWARE.some(item => item.slug === topic));
+test('eight distinct courseware pages cover proposal topics and every experiment', () => {
+  assert.equal(COURSEWARE.length, 8);
+  assert.equal(new Set(COURSEWARE.map(item => item.slug)).size, 8);
+  for (const topic of ['interrupt', 'timer', 'serial', 'isa', 'buzzer']) assert.ok(COURSEWARE.some(item => item.slug === topic));
   for (const item of COURSEWARE) {
     assert.ok(item.source.length > 10);
     for (const id of item.relatedLabs) assert.ok(labGuide(id));
   }
-  for (const id of [2, 3, 4, 5, 7, 8]) assert.ok(coursewareForLab(id).length);
+  for (const id of [1, 2, 3, 4, 5, 6, 7, 8]) assert.ok(coursewareForLab(id).length);
 });
 
 test('guide tasks keep secondary assignments in the original eight-report template', () => {

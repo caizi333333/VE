@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { assemblyLab, MAX_ASSEMBLY_CHARS, normalizeAssembly } from "@/lib/assembly-labs";
 import { api, errorText } from "@/components/client-api";
@@ -9,19 +10,33 @@ import { readLabDraft, saveLabDraft } from "@/lib/lab-drafts";
 const MAX_STEPS = 2_000_000;
 type RetryAction = { kind: 'reset' | 'run'; count: number } | { kind: 'press' };
 const hex = (value: number) => `${(value & 255).toString(16).toUpperCase().padStart(2, "0")}H`;
-const SEGMENTS = new Map([[0x3f, '0'], [0x06, '1'], [0x5b, '2'], [0x4f, '3'], [0x66, '4'], [0x6d, '5'], [0x7d, '6'], [0x07, '7'], [0x7f, '8'], [0x6f, '9'], [0x40, '−']]);
 const PHASES = new Map([[0x01, 'A'], [0x03, 'AB'], [0x02, 'B'], [0x06, 'BC'], [0x04, 'C'], [0x0c, 'CD'], [0x08, 'D'], [0x09, 'DA']]);
 const defaultTraceWindow = (id: number) => id === 7 ? 50_000 : id === 6 ? 5_000 : 0;
 const defaultPreset = (id: number) => id === 5 ? 'scan-fixed' : id === 6 ? 'two-tone-2025' : id === 7 ? 'clock-alarm' : 'basic';
-function sampledDigits(result: Native8051Result): (string | null)[] {
-  const digits: (string | null)[] = Array(8).fill(null);
+/** 七个段的 SVG 笔划：bit0=a（上）bit1=b（右上）bit2=c（右下）bit3=d（下）bit4=e（左下）bit5=f（左上）bit6=g（中），对应共阴段码。 */
+const SEG_PATHS: [number, string][] = [[0, 'M14 10 h34'], [1, 'M52 16 v28'], [2, 'M52 58 v28'], [3, 'M14 90 h34'], [4, 'M8 58 v28'], [5, 'M8 16 v28'], [6, 'M14 50 h34']];
+function SevenSegGlyph({ value }: { value: number | null }) {
+  return <svg viewBox="0 0 60 100" className="assembly-sevenseg" role="img" aria-label={value === null ? '未采到该位' : `段码 ${(value & 255).toString(16).toUpperCase().padStart(2, '0')}H`}>{SEG_PATHS.map(([bit, d]) => <path key={bit} d={d} className={value !== null && (value & (1 << bit)) ? 'on' : 'off'} />)}</svg>;
+}
+function sampledSegmentValues(result: Native8051Result): (number | null)[] {
+  const values: (number | null)[] = Array(8).fill(null);
   result.port_trace.forEach((point, index) => {
     const select = result.secondary_trace[index];
     if (!select || select.step !== point.step) return;
     const active = (~select.value) & 0xff;
-    if (active && (active & (active - 1)) === 0) digits[Math.log2(active)] = SEGMENTS.get(point.value) ?? '?';
+    if (active && (active & (active - 1)) === 0) values[Math.log2(active)] = point.value;
   });
-  return digits;
+  return values;
+}
+/** 蜂鸣器控制脚的定性节奏：只读翻转与连续段长度，不推断频率。 */
+function buzzerRhythm(result: Native8051Result): { toggles: number; hiRun: number; loRun: number; dense: boolean } {
+  let toggles = 0, hiRun = 0, loRun = 0, hi = 0, lo = 0;
+  result.port_trace.forEach((point, index) => {
+    const bit = point.value & 1;
+    if (index && bit !== (result.port_trace[index - 1].value & 1)) toggles++;
+    if (bit) { hi++; loRun = Math.max(loRun, lo); lo = 0; } else { lo++; hiRun = Math.max(hiRun, hi); hi = 0; }
+  });
+  return { toggles, hiRun: Math.max(hiRun, hi), loRun: Math.max(loRun, lo), dense: toggles > result.port_trace.length / 4 };
 }
 
 export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpandedChange, onAskTeacher }: { labId: number; learnerScope: string; expanded: boolean; onExpandedChange: (open: boolean) => void; onAskTeacher?: (run: AssemblyRun) => void }) {
@@ -191,7 +206,8 @@ export default function AssemblyDebugger({ labId, learnerScope, expanded, onExpa
             {tracePort && observedPort !== undefined && <div className="assembly-leds" aria-label={`${tracePort} 端口八位电平`}>{Array.from({ length: 8 }, (_, bit) => { const high = !!(observedPort & (1 << bit)); const lit = lab.activeLow ? !high : high; return <div className={lit ? "lit" : ""} key={bit}><span>{tracePort}.{bit}</span><b>{high ? "高" : "低"}</b></div>; })}</div>}
             {tracePort && result.port_trace.length > 0 && <div className="assembly-trace"><strong>{tracePort}.0 采样电平</strong><div className="assembly-trace-bars" role="img" aria-label={`${tracePort}.0 在 ${result.port_trace.length} 个采样点上的高低变化`}>{result.port_trace.map(point => <span key={point.step} className={point.value & 1 ? "high" : "low"} title={`第 ${point.step.toLocaleString()} 条：${hex(point.value)}`} />)}</div><p>按指令数均匀采样 {result.port_trace.length} 点；末 8 点端口值：{result.port_trace.slice(-8).map(point => hex(point.value)).join(" · ")}。窄脉冲可能落在采样点之间。</p>{labId === 8 && presetId !== 'stepper-abstract' && <p>本段高电平采样占比：{(100 * result.port_trace.filter(point => point.value & 1).length / result.port_trace.length).toFixed(1)}%。这是离散采样估计，不是电机端实测占空比或转速。</p>}</div>}
             {presetId === 'stepper-abstract' && result.port_trace.length > 0 && <div className="assembly-phase"><strong>采样到的相序</strong><p>{result.port_trace.map(point => point.value & 0x0f).filter((value, index, values) => index === 0 || value !== values[index - 1]).slice(-16).map(value => PHASES.get(value) ?? `?(${hex(value)})`).join(' → ')}</p><small>A/B/C/D 在此抽象练习中对应 P1.0/P1.1/P1.2/P1.3。相序正确不代表已匹配实物驱动器。</small></div>}
-            {displayPort && result.secondary_trace.length > 0 && <div className="assembly-display"><strong>P0 段码 × P1 位选采样</strong><div>{(labId === 7 ? [...sampledDigits(result)].reverse() : sampledDigits(result)).map((digit, index) => <span key={index}><small>P1.{labId === 7 ? 7 - index : index}</small><b>{digit ?? '·'}</b></span>)}</div><p>按备课代码中的共阴段码及 P1 低有效位选解码；“·”表示本次采样未捕捉该位。时钟按原程序的高位到低位显示，板上实际左右方向仍须核对。</p></div>}
+            {displayPort && result.secondary_trace.length > 0 && <div className="assembly-display"><strong>P0 段码 × P1 位选采样 · 显示字形</strong><div>{(labId === 7 ? [...sampledSegmentValues(result)].reverse() : sampledSegmentValues(result)).map((seg, index) => <span key={index}><small>P1.{labId === 7 ? 7 - index : index}</small><SevenSegGlyph value={seg} />{seg === null && <b>·</b>}</span>)}</div><p>按备课代码中的共阴段码及 P1 低有效位选解码；“·”表示本次采样未捕捉该位，空位全部段熄灭。时钟按原程序的高位到低位显示，板上实际左右方向仍须核对。</p></div>}
+            {labId === 6 && result.port_trace.length > 1 && (() => { const rhythm = buzzerRhythm(result); return <div className="assembly-buzzer"><strong>控制脚节奏解读</strong><p>本窗口翻转 {rhythm.toggles} 次；最长连续高电平 {rhythm.hiRun} 个采样点、低电平 {rhythm.loRun} 个采样点。{rhythm.dense ? '翻转密集：接无源蜂鸣器时是较高频率的方波喂入，听感为连续音；接有源蜂鸣器只表现为通断节奏。' : '高低段都长且交替少：对应“响一阵、停一阵”的间断节奏——有源蜂鸣器的响/停由这两段时长决定；若是 无源器件，慢速翻转只能听到咔嗒断续声，谈不上音高。'}真实声音以本班器件为准；原理对照见 <Link href="/courseware/buzzer">蜂鸣器：节奏与音高</Link>。</p></div>; })()}
             {tertiaryPort && result.tertiary_trace.length > 0 && <div className="assembly-trace"><strong>P2.0 分钟报警控制信号</strong><div className="assembly-trace-bars" role="img" aria-label="P2.0 蜂鸣器控制脚采样电平">{result.tertiary_trace.map(point => <span key={point.step} className={point.value & 1 ? "high" : "low"} title={`第 ${point.step.toLocaleString()} 条：${hex(point.value)}`} />)}</div><p>报警时两种电平交替；该图不等于可听音频或蜂鸣器实物测试。</p></div>}
           </div> : <p className="assembly-empty">点“运行程序”，这里会显示本次仿真的实际读数。无需先选择运行步数。</p>}
           {snapshot && <div className="assembly-evidence-actions"><button className="btn" type="button" disabled={!canUseEvidence} onClick={() => download(assemblyEvidenceFile(snapshot), 'json')}>下载调试记录</button>{onAskTeacher && <button className="btn primary" type="button" disabled={!canUseEvidence} onClick={() => onAskTeacher(snapshot)}>带入代码与记录，向教师求助</button>}<small>记录包含本次源码、晶振、按键、寄存器及采样值。带入后还需填写实际问题，由你提交。</small></div>}

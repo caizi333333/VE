@@ -1657,6 +1657,29 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .cw-period small { position: absolute; bottom: -28px; left: 0; color: #536957; font-size: 14px; }
 .cw-phases { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 20px; }
 .cw-phases span { min-width: 47px; padding: 7px 9px; border: 1px solid #c0d5c5; border-radius: 7px; background: #fff; color: #24533c; font: 700 14px "SFMono-Regular", Consolas, monospace; text-align: center; transition: .25s ease; }
+.cw-isa-stage { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.cw-isa-stage .cw-stage-note { grid-column: 1 / -1; margin-top: 4px; }
+.cw-isa-code { display: grid; gap: 4px; }
+.cw-isa-line { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 10px; padding: 7px 12px; border: 1px solid #dbe6dc; border-radius: 7px; background: #f7faf7; transition: .2s ease; }
+.cw-isa-line small { color: #8aa392; font: 700 12px "SFMono-Regular", Consolas, monospace; }
+.cw-isa-line code { color: #2a4a39; font: 700 15px "SFMono-Regular", Consolas, monospace; }
+.cw-isa-line span { color: #71877a; font-size: 12px; }
+.cw-isa-line.current { border-color: #a06935; background: #fff0d7; box-shadow: 0 0 0 3px #b7783e2b; }
+.cw-isa-line.done { background: #eef4ee; }
+.cw-isa-regs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.cw-isa-reg { display: grid; justify-items: center; gap: 6px; padding: 14px 6px; border: 1px solid #ccddce; border-radius: 9px; background: #fff; transition: .25s ease; }
+.cw-isa-reg small { color: #536957; font-size: 13px; font-weight: 700; }
+.cw-isa-reg strong { color: #174b35; font: 700 20px "SFMono-Regular", Consolas, monospace; }
+.cw-isa-reg.changed { border-color: #a06935; background: #fff3de; box-shadow: 0 0 0 3px #b7783e2b; }
+.cw-isa-stack-note { grid-column: 1 / -1; margin: 8px 0 0; color: #5a7462; font-size: 13px; line-height: 1.6; }
+.cw-buzzer-stage svg { display: block; width: 100%; height: auto; border: 1px solid #d4e1d6; border-radius: 9px; background: #fff; }
+.cw-buzzer-read { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.cw-buzzer-read > div { padding: 12px 14px; border: 1px solid #d1dfd2; border-radius: 9px; background: #fff; transition: .25s ease; }
+.cw-buzzer-read > div.current { border-color: #a06935; background: #fff7e6; box-shadow: 0 0 0 3px #b7783e2b; }
+.cw-buzzer-read small { display: block; color: #8a552a; font-size: 12px; font-weight: 700; letter-spacing: .05em; }
+.cw-buzzer-read strong { display: block; margin: 3px 0 5px; color: #1d4a34; font-size: 16px; }
+.cw-buzzer-read p { margin: 0; color: #4a6250; font-size: 13px; line-height: 1.6; }
+@media (max-width: 900px) { .cw-isa-stage { grid-template-columns: minmax(0,1fr); } .cw-isa-regs { grid-template-columns: repeat(3, minmax(0,1fr)); } .cw-buzzer-read { grid-template-columns: minmax(0,1fr); } }
 .cw-playback { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 22px clamp(22px,3vw,38px); }
 .cw-playback span { color: #8a552a; font: 700 14px "SFMono-Regular", Consolas, monospace; }
 .cw-playback p { margin: 4px 0 0; color: #344f3e; font-size: 15px; }
@@ -1672,7 +1695,7 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 /* Courseware: a restrained instrument-panel language tied to the actual lab tasks. */
 .cw-layout { gap: 18px; max-width: 1320px; }
 .cw-index { padding: 11px; border: 1px solid #36594a; background: #17362d; box-shadow: 0 20px 44px #17362d24; }
-.cw-index::before { content: "原理专题 / 06 UNITS"; display: block; padding: 12px 12px 9px; color: #9db7a8; font: 700 12px "SFMono-Regular", Consolas, monospace; letter-spacing: .09em; }
+.cw-index::before { content: "原理专题 / 08 UNITS"; display: block; padding: 12px 12px 9px; color: #9db7a8; font: 700 12px "SFMono-Regular", Consolas, monospace; letter-spacing: .09em; }
 .cw-sidebar { display: grid; align-content: start; gap: 12px; min-width: 0; }
 .cw-lab-directory { border: 1px solid #cadbcd; border-radius: 12px; background: #fff; box-shadow: 0 12px 25px #17362d10; }
 .cw-lab-directory summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 50px; padding: 11px 14px; color: #1d4a34; font-size: 14px; font-weight: 700; cursor: pointer; }
@@ -1796,7 +1819,13 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .assembly-trace-bars .low { background: #ddd5a8; }
 .assembly-display { margin-top: 14px; border-top: 1px solid #b7d2bd; padding-top: 12px; }
 .assembly-display > div { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
-.assembly-display span { display: grid; gap: 2px; text-align: center; min-width: 0; border: 1px solid #a7bea9; border-radius: 6px; background: #12261b; color: #def3df; padding: 5px 1px; }
+.assembly-display span { display: grid; gap: 2px; justify-items: center; text-align: center; min-width: 0; border: 1px solid #a7bea9; border-radius: 6px; background: #12261b; color: #def3df; padding: 5px 1px; }
+.assembly-sevenseg { width: 30px; height: auto; margin: 4px 0; }
+.assembly-sevenseg path { fill: none; stroke-width: 7; stroke-linecap: round; }
+.assembly-sevenseg .on { stroke: #e0563f; filter: drop-shadow(0 0 4px #e0563f88); }
+.assembly-sevenseg .off { stroke: #3a4a3f; opacity: .55; }
+.assembly-buzzer { margin-top: 14px; border-top: 1px solid #b7d2bd; padding-top: 12px; }
+.assembly-buzzer p { margin: 6px 0 0; color: #40584a; font-size: 14px; line-height: 1.65; }
 .assembly-display small { color: #c2d6c4; font-size: 10px; }
 .assembly-display b { font: 700 20px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .assembly-phase { margin-top: 14px; border-top: 1px solid #b7d2bd; padding-top: 12px; }
