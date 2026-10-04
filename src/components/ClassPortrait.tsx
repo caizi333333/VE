@@ -1,11 +1,14 @@
 "use client";
 import type { StatsView } from "@/lib/api-types";
+import type { PrepRow } from "@/app/api/teacher/prep/route";
 import { statusLabel } from "@/components/client-api";
 export default function ClassPortrait({
   stats,
+  prepRows,
   onRecord,
 }: {
   stats: StatsView;
+  prepRows?: PrepRow[];
   onRecord: (ticket: string) => void;
 }) {
   const c = stats.counts;
@@ -161,6 +164,55 @@ export default function ClassPortrait({
           </div>
         ) : (
           <p className="empty">暂没有教师确认的知识点问题记录。</p>
+        )}
+      </section>
+      <section className="card">
+        <h2>课前预习回执</h2>
+        <p className="muted" style={{ margin: "8px 0 16px" }}>
+          学生在实验页提交的「看课件＋跑示例＋答两题」回执，用于课前判断哪些编号需要课上重点关注。勾选项是学生自我确认，不代表教师已核对。
+        </p>
+        {prepRows && prepRows.length ? (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>实验</th>
+                  <th>学习编号</th>
+                  <th>提交时间</th>
+                  <th>完成项</th>
+                  <th>预习回答</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prepRows.map((r) => (
+                  <tr key={`${r.lab_id}-${r.learner_number}`}>
+                    <td>实验{r.lab_id}</td>
+                    <td className="font-mono">{r.learner_number}</td>
+                    <td>{new Date(r.submitted_at).toLocaleString("zh-CN")}</td>
+                    <td>
+                      {r.courseware_done ? "课件✓ " : ""}
+                      {r.example_done ? "示例✓" : ""}
+                    </td>
+                    <td>
+                      <details>
+                        <summary className="record-link">查看 {r.answers.length} 题回答</summary>
+                        <ul className="muted" style={{ margin: "6px 0 0", paddingLeft: 16 }}>
+                          {r.answers.map((a) => (
+                            <li key={a.id} style={{ marginBottom: 6 }}>
+                              <span style={{ display: "block", fontWeight: 600 }}>{a.prompt}</span>
+                              {a.answer}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="empty">暂没有预习回执；学生在实验页「课前预习」卡提交后会出现在这里。</p>
         )}
       </section>
       <section className="card">

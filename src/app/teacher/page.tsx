@@ -8,6 +8,7 @@ import type {
   TeacherListView,
 } from "@/lib/api-types";
 import { api, errorText } from "@/components/client-api";
+import type { PrepRow } from "@/app/api/teacher/prep/route";
 import ReviewList from "./review-list";
 import ClassroomManager from "@/components/ClassroomManager";
 import ClassPortrait from "@/components/ClassPortrait";
@@ -30,6 +31,7 @@ export default function TeacherPage() {
   const [materialLab, setMaterialLab] = useState(1);
   const [data, setData] = useState<TeacherListView | null>(null);
   const [stats, setStats] = useState<StatsView | null>(null);
+  const [prepRows, setPrepRows] = useState<PrepRow[]>([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -77,7 +79,12 @@ export default function TeacherPage() {
       } else if (tab === "stats") {
         if (from) params.set("from", from);
         if (to) params.set("to", to);
-        setStats(await api<StatsView>(`/api/teacher/stats?${params}`));
+        const [statsValue, prepValue] = await Promise.all([
+          api<StatsView>(`/api/teacher/stats?${params}`),
+          api<{ rows: PrepRow[] }>(`/api/teacher/prep?${params}`),
+        ]);
+        setStats(statsValue);
+        setPrepRows(prepValue.rows);
       }
     } catch (e) {
       setError(errorText(e));
@@ -401,6 +408,7 @@ export default function TeacherPage() {
           ) : stats ? (
             <ClassPortrait
               stats={stats}
+              prepRows={prepRows}
               onRecord={(ticket) => {
                 setQuery(ticket);
                 setSearch(ticket);

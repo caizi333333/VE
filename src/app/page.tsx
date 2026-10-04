@@ -14,6 +14,7 @@ import AssemblyDebugger from "@/components/AssemblyDebugger";
 import { prepareAssemblyHelp, type AssemblyRun } from "@/lib/assembly-workflow";
 import { clearHelpDraft, clearLabDrafts, readHelpDraft, readLabDraft, readLastLab, readLastTicket, saveHelpDraft, saveLastLab, saveLastTicket } from "@/lib/lab-drafts";
 import { coursewareForLab } from "@/lib/courseware";
+import { labPrep, type PrepView } from "@/lib/lab-prep";
 import LabGraphBlock from "@/components/LabGraphBlock";
 import LabPresenter from "@/components/LabPresenter";
 import type {
@@ -58,6 +59,11 @@ export default function StudentPage() {
   const [revision, setRevision] = useState(false);
   const [requestKey, setRequestKey] = useState("");
   const [restoredHelp, setRestoredHelp] = useState("");
+  const [prep, setPrep] = useState<PrepView | null>(null);
+  const [prepChecks, setPrepChecks] = useState({ courseware: false, example: false });
+  const [prepAnswers, setPrepAnswers] = useState<Record<string, string>>({});
+  const [prepBusy, setPrepBusy] = useState(false);
+  const [prepMsg, setPrepMsg] = useState("");
   const [helpDraftStatus, setHelpDraftStatus] = useState("");
   const [presenterOpen, setPresenterOpen] = useState(false);
   const recognition = useRef<{ start: () => void; stop: () => void } | null>(null);
@@ -106,6 +112,31 @@ export default function StudentPage() {
       setHelpDraftStatus(symptom || code || assemblyEvidence ? "求助草稿已保存到此浏览器，尚未提交。切换实验或刷新可继续；退出课堂会清除。" : "");
     } catch { setHelpDraftStatus("求助草稿无法自动保存，请在离开页面前下载草稿。"); }
   }, [learnerScope, guide, ticket, revision, restoredHelp, helpScope, labId, symptom, code, assemblyEvidence, issueType, requestKey]);
+  useEffect(() => {
+    setPrep(null); setPrepMsg("");
+    setPrepChecks({ courseware: false, example: false }); setPrepAnswers({});
+    if (!learnerScope || labId < 1 || labId > 8) return;
+    let cancelled = false;
+    void api<{ prep: PrepView | null }>(`/api/prep?lab_id=${labId}`)
+      .then((v) => { if (!cancelled && v.prep) { setPrep(v.prep); setPrepChecks({ courseware: v.prep.courseware_done, example: v.prep.example_done }); setPrepAnswers(Object.fromEntries(v.prep.answers.map((a) => [a.id, a.answer]))); } })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [learnerScope, labId]);
+  const submitPrep = async () => {
+    const def = labPrep(labId);
+    if (!def || prepBusy) return;
+    setPrepBusy(true); setPrepMsg("");
+    try {
+      const res = await api<{ ok: boolean; prep: PrepView | null }>("/api/prep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lab_id: labId, courseware_done: prepChecks.courseware, example_done: prepChecks.example, answers: def.questions.map((q) => ({ id: q.id, answer: prepAnswers[q.id] ?? "" })) }),
+      });
+      if (res.prep) setPrep(res.prep);
+      setPrepMsg("已提交预习回执，教师可在课堂记录看到。");
+    } catch (err) { setPrepMsg(errorText(err)); }
+    setPrepBusy(false);
+  };
   const openBench = () => {
     setBenchOpen(true);
     window.requestAnimationFrame(() => {
@@ -490,7 +521,21 @@ export default function StudentPage() {
           {LAB_GUIDES.map(lab => <button key={lab.id} data-lab-id={lab.id} type="button" disabled={busy} className={`lab-nav-item ${labId === lab.id ? "active" : ""}`} aria-pressed={labId === lab.id} onClick={() => selectLab(lab.id)}><span>{String(lab.id).padStart(2, "0")}</span><strong>{lab.title}</strong></button>)}
         </div>
         {guide && <article className="lab-overview" id="lab-guide" key={guide.id}>
-          <div className="lab-overview-main"><div className="lab-overview-copy"><span className="eyebrow">当前实验 · {String(guide.id).padStart(2, "0")} / 08</span><h2>{LAB_REPORT_TITLES[guide.id]}</h2><p className="lab-goal">{guide.goal}</p><div className="lab-observation-focus"><span>本次要记录</span><strong>{guide.observations.join("；")}</strong></div><div className="lab-overview-actions"><button className="btn primary" type="button" onClick={openBench}>{hasDraft || benchOpen ? "继续实验" : "开始实验"}</button><a className="btn quiet" href="#lab-steps" onClick={() => { const details = document.getElementById("lab-steps") as HTMLDetailsElement | null; if (details) details.open = true; }}>实物接线与准备</a><a className="btn quiet" href="#ask-teacher">向教师求助</a><button className="btn quiet" type="button" onClick={() => setPresenterOpen(true)}>课堂演示</button></div><p className="muted">先运行虚拟示例，再修改与对照。操作实物前须核对本班器材与接线。</p></div><LabVisual labId={guide.id} /></div>
+          <div className="lab-overview-main"><div className="lab-overview-copy"><span className="eyebrow">当前实验 · {String(guide.id).padStart(2, "0")} / 08</span><h2>{LAB_REPORT_TITLES[guide.id]}</h2><p className="lab-goal">{guide.goal}</p><div className="lab-observation-focus"><span>本次要记录</span><strong>{guide.observations.join("；")}</strong></div><div className="lab-overview-actions"><button className="btn primary" type="button" onClick={openBench}>{hasDraft || benchOpen ? "继续实验" : "开始实验"}</button><a className="btn quiet" href="#lab-prep" onClick={() => { const details = document.getElementById("lab-prep") as HTMLDetailsElement | null; if (details) details.open = true; }}>课前预习</a><a className="btn quiet" href="#lab-steps" onClick={() => { const details = document.getElementById("lab-steps") as HTMLDetailsElement | null; if (details) details.open = true; }}>实物接线与准备</a><a className="btn quiet" href="#ask-teacher">向教师求助</a><button className="btn quiet" type="button" onClick={() => setPresenterOpen(true)}>课堂演示</button></div><p className="muted">先运行虚拟示例，再修改与对照。操作实物前须核对本班器材与接线。</p></div><LabVisual labId={guide.id} /></div>
+          {(() => { const def = labPrep(guide.id); return def ? <details className="lab-prep" id="lab-prep">
+            <summary>课前预习：看课件、跑示例、答两题{prep && <span className="prep-badge">已提交回执</span>}</summary>
+            <div className="lab-prep-body">
+              <ol>
+                <li>看完课件 <Link href={`/courseware/${def.coursewareSlug}`}>{def.coursewareTitle}↗</Link>，勾选右侧确认。<label className="prep-check"><input type="checkbox" checked={prepChecks.courseware} onChange={(e) => setPrepChecks({ ...prepChecks, courseware: e.target.checked })} /> 已看完课件</label></li>
+                <li>{def.runStep}<label className="prep-check"><input type="checkbox" checked={prepChecks.example} onChange={(e) => setPrepChecks({ ...prepChecks, example: e.target.checked })} /> 已运行示例</label></li>
+                <li>回答下面两个问题——教师会在课前看到你的回执，判断谁需要课上重点关注：</li>
+              </ol>
+              {def.questions.map((q) => <label key={q.id} className="prep-q"><span><b className="prep-point">[{q.point}]</b> {q.prompt}</span><textarea rows={2} value={prepAnswers[q.id] ?? ""} onChange={(e) => setPrepAnswers({ ...prepAnswers, [q.id]: e.target.value })} placeholder="用自己的话写，不确定也写出来" /></label>)}
+              <div className="row"><button className="btn primary" type="button" disabled={prepBusy || !prepChecks.courseware || !prepChecks.example || def.questions.some((q) => !(prepAnswers[q.id] ?? "").trim())} onClick={() => void submitPrep()}>{prep ? "更新预习回执" : "提交预习回执"}</button>{prep && <span className="muted">最近提交 {new Date(prep.submitted_at).toLocaleString("zh-CN")}</span>}</div>
+              {prepMsg && <p className="muted" role="status">{prepMsg}</p>}
+              <p className="muted">勾选只是自我确认；预习回执只记编号，不含姓名。课件与示例不判对错，教师看到的是你完成和写下疑问的时间。</p>
+            </div>
+          </details> : null; })()}
           <AssemblyDebugger key={`${learnerScope}:${guide.id}`} labId={guide.id} learnerScope={learnerScope} expanded={benchOpen} onExpandedChange={setBenchOpen} onAskTeacher={askWithAssembly} />
           <details className="lab-instructions" id="lab-steps"><summary>实验准备、课程原理与验证要求</summary>
           <div className="lab-guide-columns">

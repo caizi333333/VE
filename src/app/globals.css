@@ -1464,6 +1464,18 @@ input, textarea, select { border-color: #a7b8ab; border-radius: 10px; }
 .lab-nav-item:hover { background: #f1f7ef; transform: translateY(-2px); }
 .lab-nav-item.active { border-color: #2d7052; background: #e9f3e9; color: #164e36; box-shadow: inset 0 0 0 1px #2d7052; }
 .lab-nav-item:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.lab-prep { margin-top: 14px; padding: 0; border: 1px solid #d4e0d6; border-radius: 12px; background: #f7faf5; }
+.lab-prep > summary { padding: 12px 16px; font-size: 14px; font-weight: 600; color: #2d5a42; cursor: pointer; list-style-position: inside; }
+.prep-badge { margin-left: 8px; padding: 1px 8px; border-radius: 8px; background: #dceadd; font-size: 12px; font-weight: 600; color: #1f5c38; }
+.lab-prep-body { padding: 0 16px 14px; font-size: 13.5px; }
+.lab-prep-body ol { margin: 0 0 10px 18px; padding: 0; }
+.lab-prep-body li { margin: 6px 0; }
+.lab-prep-body li a { color: #2d7052; font-weight: 600; }
+.prep-check { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; color: #56705f; font-size: 12.5px; white-space: nowrap; }
+.prep-q { display: block; margin: 10px 0; }
+.prep-q > span { display: block; margin-bottom: 5px; color: #33493c; }
+.prep-point { color: #8a5a2b; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+.prep-q textarea { width: 100%; padding: 8px 10px; border: 1px solid #cfdccf; border-radius: 8px; font: inherit; resize: vertical; }
 .specialty-entry { margin: 15px 0 0; color: #53715d; font-size: 14px; }
 .specialty-entry summary { cursor: pointer; width: fit-content; }
 .specialty-entry .btn { margin-top: 8px; }
